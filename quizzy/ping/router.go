@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Setup(rt *gin.Engine) {
+func ConfigureRoutes(rt *gin.RouterGroup) {
 	rt.GET("/ping", ping)
 }
 
