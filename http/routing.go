@@ -2,9 +2,11 @@ package http
 
 import (
 	"github.com/gin-gonic/gin"
-	"quizzy.app/backend/ping"
+	"net/http"
 )
 
 func Setup(rt *gin.Engine) {
-	ping.Setup(rt)
+	rt.GET("/ping", func(c *gin.Context) {
+		c.String(http.StatusOK, "pong!")
+	})
 }
