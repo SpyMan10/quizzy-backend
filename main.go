@@ -13,6 +13,7 @@ func main() {
 
 	// Initializing HTTP routes.
 	quizzyhttp.Setup(engine)
+	ConnectToFirebase()
 
 	// Running server: listen on any network interface (port 8000).
 	if err := engine.Run(":8000"); err != nil {
