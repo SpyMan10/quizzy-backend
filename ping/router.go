@@ -5,9 +5,11 @@ import (
 )
 
 func Setup(rt *gin.Engine) {
-	rt.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status": "OK",
-		})
+	rt.GET("/ping", ping)
+}
+
+func ping(c *gin.Context) {
+	c.JSON(500, gin.H{
+		"status": "OK",
 	})
 }
