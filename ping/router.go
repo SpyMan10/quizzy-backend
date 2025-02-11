@@ -9,6 +9,7 @@ func Setup(rt *gin.Engine) {
 }
 
 func ping(c *gin.Context) {
+<<<<<<< HEAD
 	// Teste de la reponse FireBAse
 	payload := make(map[string]interface{})
 
@@ -27,4 +28,9 @@ func ping(c *gin.Context) {
 	payload["details"] = map[string]string{"database": printDatabase}
 
 	c.JSON(statusHtml, payload)
+=======
+	c.JSON(500, gin.H{
+		"status": "OK",
+	})
+>>>>>>> 83e3dbb9155307f65aef0c2bea5438d96e45d3c5
 }
