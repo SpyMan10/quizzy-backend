@@ -18,8 +18,8 @@ type AppConfig struct {
 
 // getEnvDefault fetch environment variable from the given key and return it if found,
 // otherwise the default value is returned.
-func getEnvDefault(key string, def string) string {
-	if v, f := os.LookupEnv("APP_ENV"); f {
+func getEnvDefault(key, def string) string {
+	if v, f := os.LookupEnv(key); f {
 		return v
 	}
 
