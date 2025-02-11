@@ -1,9 +1,8 @@
 package main
 
 import (
-	"log"
-
 	"github.com/gin-gonic/gin"
+	"log"
 	quizzyhttp "quizzy.app/backend/http"
 )
 
