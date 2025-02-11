@@ -18,7 +18,7 @@ func ConfigureFirebase(cfg AppConfig) (*firestore.Client, error) {
 	}
 
 	opt := option.WithCredentialsFile(cfg.firebaseConfFile)
-	if app, err := firebase.NewApp(context.Background(), nil, opt); err != nil && app != nil {
+	if app, err := firebase.NewApp(context.Background(), nil, opt); app != nil && err == nil {
 		return app.Firestore(context.Background())
 	} else {
 		return nil, err
