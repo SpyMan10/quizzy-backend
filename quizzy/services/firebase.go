@@ -1,4 +1,4 @@
-package quizzy
+package services
 
 import (
 	"cloud.google.com/go/firestore"
@@ -7,6 +7,7 @@ import (
 	firebase "firebase.google.com/go"
 	fireauth "firebase.google.com/go/auth"
 	"google.golang.org/api/option"
+	"quizzy.app/backend/quizzy/cfg"
 )
 
 var (
@@ -25,12 +26,12 @@ func newFirebaseServices(store *firestore.Client, auth *fireauth.Client) Firebas
 	}
 }
 
-func ConfigureFirebase(cfg AppConfig) (FirebaseServices, error) {
-	if len(cfg.firebaseConfFile) == 0 {
+func ConfigureFirebase(cfg cfg.AppConfig) (FirebaseServices, error) {
+	if len(cfg.FirebaseConfFile) == 0 {
 		return FirebaseServices{}, ErrFirebaseConfNotFound
 	}
 
-	opt := option.WithCredentialsFile(cfg.firebaseConfFile)
+	opt := option.WithCredentialsFile(cfg.FirebaseConfFile)
 	if app, err := firebase.NewApp(context.Background(), nil, opt); app != nil && err == nil {
 		store, _ := app.Firestore(context.Background())
 		auth, _ := app.Auth(context.Background())

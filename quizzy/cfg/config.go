@@ -1,4 +1,4 @@
-package quizzy
+package cfg
 
 import "os"
 
@@ -14,7 +14,7 @@ type AppConfig struct {
 	// Address to listen on
 	addr string
 	// Firebase configuration file.
-	firebaseConfFile string
+	FirebaseConfFile string
 }
 
 // getEnvDefault fetch environment variable from the given key and return it if found,
@@ -31,6 +31,6 @@ func LoadCfgFromEnv() AppConfig {
 	return AppConfig{
 		env:              getEnvDefault("APP_ENV", EnvProduction),
 		addr:             getEnvDefault("APP_ADDR", ":8000"),
-		firebaseConfFile: os.Getenv("APP_FIREBASE_CONF_FILE"),
+		FirebaseConfFile: os.Getenv("APP_FIREBASE_CONF_FILE"),
 	}
 }
