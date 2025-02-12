@@ -1,4 +1,4 @@
-package quizzy
+package cfg
 
 import "os"
 

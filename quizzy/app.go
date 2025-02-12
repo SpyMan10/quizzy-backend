@@ -3,17 +3,19 @@ package quizzy
 import (
 	"github.com/gin-gonic/gin"
 	"log"
+	"quizzy.app/backend/quizzy/cfg"
 	quizzyhttp "quizzy.app/backend/quizzy/http"
+	"quizzy.app/backend/quizzy/services"
 )
 
 func Run() {
-	cfg := LoadCfgFromEnv()
+	config := cfg.LoadCfgFromEnv()
 
-	switch cfg.Env {
-	case EnvDevelopment:
+	switch config.Env {
+	case cfg.EnvDevelopment:
 		gin.SetMode(gin.DebugMode)
 		break
-	case EnvTest:
+	case cfg.EnvTest:
 		gin.SetMode(gin.TestMode)
 		break
 	default:
@@ -21,7 +23,7 @@ func Run() {
 		break
 	}
 
-	log.Printf("running mode : %s\n", cfg.Env)
+	log.Printf("running mode : %s\n", config.Env)
 
 	// Initializing GIN engine.
 	engine := gin.Default()
@@ -35,7 +37,7 @@ func Run() {
 	router.Use(func(ctx *gin.Context) {
 		//FIXME: Firebase application must be initialized outside ConfigureFirebase().
 		// Firestore can be initialized each time we need it.
-		if client, err := ConfigureFirebase(cfg); err == nil {
+		if client, err := services.ConfigureFirebase(config); err == nil {
 			ctx.Set("firebase-services", client)
 		}
 	})
@@ -44,7 +46,7 @@ func Run() {
 	quizzyhttp.ConfigureRouting(router)
 
 	// Running server...
-	if err := engine.Run(cfg.Addr); err != nil {
-		log.Fatalf("Failed to start server on %s: %s", cfg.Addr, err)
+	if err := engine.Run(config.Addr); err != nil {
+		log.Fatalf("Failed to start server on %s: %s", config.Addr, err)
 	}
 }
