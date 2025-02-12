@@ -9,7 +9,7 @@ import (
 func Run() {
 	cfg := LoadCfgFromEnv()
 
-	switch cfg.env {
+	switch cfg.Env {
 	case EnvDevelopment:
 		gin.SetMode(gin.DebugMode)
 		break
@@ -21,7 +21,7 @@ func Run() {
 		break
 	}
 
-	log.Printf("running mode : %s\n", cfg.env)
+	log.Printf("running mode : %s\n", cfg.Env)
 
 	// Initializing GIN engine.
 	engine := gin.Default()
@@ -35,7 +35,7 @@ func Run() {
 	router.Use(func(ctx *gin.Context) {
 		//FIXME: Firebase application must be initialized outside ConfigureFirebase().
 		// Firestore can be initialized each time we need it.
-		if client, err := ConfigureFirebase(cfg); err == nil && client != nil {
+		if client, err := ConfigureFirebase(cfg); err == nil {
 			ctx.Set("firebase-services", client)
 		}
 	})
@@ -44,7 +44,7 @@ func Run() {
 	quizzyhttp.ConfigureRouting(router)
 
 	// Running server...
-	if err := engine.Run(cfg.addr); err != nil {
-		log.Fatalf("Failed to start server on %s: %s", cfg.addr, err)
+	if err := engine.Run(cfg.Addr); err != nil {
+		log.Fatalf("Failed to start server on %s: %s", cfg.Addr, err)
 	}
 }
