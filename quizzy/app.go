@@ -3,17 +3,18 @@ package quizzy
 import (
 	"github.com/gin-gonic/gin"
 	"log"
+	cfg2 "quizzy.app/backend/quizzy/cfg"
 	quizzyhttp "quizzy.app/backend/quizzy/http"
 )
 
 func Run() {
-	cfg := LoadCfgFromEnv()
+	cfg := cfg2.LoadCfgFromEnv()
 
 	switch cfg.env {
-	case EnvDevelopment:
+	case cfg2.EnvDevelopment:
 		gin.SetMode(gin.DebugMode)
 		break
-	case EnvTest:
+	case cfg2.EnvTest:
 		gin.SetMode(gin.TestMode)
 		break
 	default:
@@ -36,6 +37,7 @@ func Run() {
 		//FIXME: Firebase application must be initialized outside ConfigureFirebase().
 		// Firestore can be initialized each time we need it.
 		if client, err := ConfigureFirebase(cfg); err == nil && client != nil {
+			println("Firebase initialized.")
 			ctx.Set("firebase-services", client)
 		}
 	})
