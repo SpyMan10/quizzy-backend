@@ -5,6 +5,7 @@ import "os"
 const (
 	EnvDevelopment = "DEVELOPMENT"
 	EnvProduction  = "PRODUCTION"
+	EnvTest        = "TEST"
 )
 
 type AppConfig struct {
