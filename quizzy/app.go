@@ -9,6 +9,17 @@ import (
 func Run() {
 	cfg := LoadCfgFromEnv()
 
+	switch cfg.env {
+	case "development":
+		gin.SetMode(gin.DebugMode)
+	case "test":
+		gin.SetMode(gin.TestMode)
+	default:
+		gin.SetMode(gin.ReleaseMode)
+	}
+	
+	log.Printf("running mode : %s\n", cfg.env)
+
 	// Initializing GIN engine.
 	engine := gin.Default()
 
