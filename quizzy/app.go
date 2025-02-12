@@ -10,14 +10,17 @@ func Run() {
 	cfg := LoadCfgFromEnv()
 
 	switch cfg.env {
-	case "development":
+	case EnvDevelopment:
 		gin.SetMode(gin.DebugMode)
-	case "test":
+		break
+	case EnvTest:
 		gin.SetMode(gin.TestMode)
+		break
 	default:
 		gin.SetMode(gin.ReleaseMode)
+		break
 	}
-	
+
 	log.Printf("running mode : %s\n", cfg.env)
 
 	// Initializing GIN engine.
