@@ -4,32 +4,13 @@ import (
 	"context"
 	"firebase.google.com/go/auth"
 	"github.com/gin-gonic/gin"
-	"log"
+	"quizzy.app/backend/quizzy/middlewares"
 	svc "quizzy.app/backend/quizzy/services"
-	"strings"
 )
 
-func RequireAuth(ctx *gin.Context) {
-	token := strings.TrimSpace(strings.TrimLeft(ctx.GetHeader("Authorization"), "Bearer"))
-
-	if len(token) == 0 {
-		log.Println("missing authorization token")
-		ctx.AbortWithStatus(401)
-		return
-	}
-
-	services := ctx.MustGet("firebase-services").(svc.FirebaseServices)
-	if tok, err := services.Auth.VerifyIDTokenAndCheckRevoked(context.Background(), token); err != nil {
-		ctx.AbortWithStatus(401)
-	} else {
-		ctx.Set("user-token", tok)
-		ctx.Next()
-	}
-}
-
 func ConfigureRoutes(rt *gin.RouterGroup) {
-	secured := rt.Group("/users", RequireAuth)
-	secured.POST("", createUser)
+	secured := rt.Group("/users", middlewares.RequireAuth)
+	secured.POST("", postUser)
 	secured.GET("/me", getSelf)
 }
 
@@ -37,7 +18,7 @@ type userForCreate struct {
 	Username string `json:"username"`
 }
 
-func createUser(c *gin.Context) {
+func postUser(c *gin.Context) {
 	servicesFire := c.MustGet("firebase-services").(svc.FirebaseServices)
 	userToken := c.MustGet("user-token").(*auth.Token)
 
