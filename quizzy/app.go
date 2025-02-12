@@ -22,6 +22,7 @@ func Run() {
 		//FIXME: Firebase application must be initialized outside ConfigureFirebase().
 		// Firestore can be initialized each time we need it.
 		if client, err := ConfigureFirebase(cfg); err == nil && client != nil {
+			println("Firebase initialized.")
 			ctx.Set("firebase-services", client)
 		}
 	})
