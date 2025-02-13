@@ -8,7 +8,8 @@ import (
 )
 
 func ConfigureRouting(router *gin.RouterGroup) {
-	ping.ConfigureRoutes(router)
-	users.ConfigureRoutes(router)
-	quiz.ConfigureRoutes(router)
+	grp := router.Group("/api")
+	ping.ConfigureRoutes(grp)
+	users.ConfigureRoutes(grp)
+	quiz.ConfigureRoutes(grp)
 }

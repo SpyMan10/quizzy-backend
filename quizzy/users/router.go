@@ -1,59 +1,56 @@
 package users
 
 import (
-	"context"
-	"firebase.google.com/go/auth"
 	"github.com/gin-gonic/gin"
+	"net/http"
 	"quizzy.app/backend/quizzy/middlewares"
-	svc "quizzy.app/backend/quizzy/services"
 )
 
 func ConfigureRoutes(rt *gin.RouterGroup) {
-	secured := rt.Group("/users", middlewares.RequireAuth)
-	secured.POST("", postUser)
-	secured.GET("/me", getSelf)
+	secured := rt.Group("/users", middlewares.RequireAuth, provideUserStore)
+	secured.POST("", handlePostUser)
+	secured.GET("/me", handleGetSelf)
 }
 
-type userForCreate struct {
+type userRegistrationRequest struct {
 	Username string `json:"username"`
 }
 
-func postUser(c *gin.Context) {
-	servicesFire := c.MustGet("firebase-services").(svc.FirebaseServices)
-	userToken := c.MustGet("user-token").(*auth.Token)
+func handlePostUser(ctx *gin.Context) {
+	id := middlewares.UseIdentity(ctx)
+	ufc := userRegistrationRequest{}
 
-	ufc := userForCreate{}
-	if err := c.ShouldBindJSON(&ufc); err != nil {
-		c.AbortWithStatus(400)
+	if err := ctx.ShouldBindJSON(&ufc); err != nil {
+		ctx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
-	_, err := servicesFire.Store.Collection("users").Doc(userToken.UID).Set(context.Background(), map[string]interface{}{
-		"username": ufc.Username,
-	})
-	if err != nil {
-		c.AbortWithStatus(200)
+
+	store := useUserStore(ctx)
+	if err := store.Upsert(User{Username: ufc.Username, Uid: id.Uid}); err != nil {
+		ctx.AbortWithStatus(http.StatusInternalServerError)
+		return
 	}
 
-	c.Status(200)
+	ctx.Status(http.StatusCreated)
 }
 
-type UserData struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
+type UserResponse struct {
 	Uid      string `json:"uid"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
 }
 
-func getSelf(c *gin.Context) {
-	servicesFire := c.MustGet("firebase-services").(svc.FirebaseServices)
-	userToken := c.MustGet("user-token").(*auth.Token)
+func handleGetSelf(ctx *gin.Context) {
+	id := middlewares.UseIdentity(ctx)
+	store := useUserStore(ctx)
 
-	if doc, err := servicesFire.Store.Collection("users").Doc(userToken.UID).Get(context.Background()); err != nil {
-		c.AbortWithStatus(500)
-	} else {
-		c.JSON(200, UserData{
-			Username: doc.Data()["username"].(string),
-			Uid:      userToken.UID,
-			Email:    userToken.Claims["email"].(string),
+	if user, err := store.GetUnique(id.Uid); err == nil {
+		ctx.JSON(http.StatusOK, UserResponse{
+			Uid:      user.Uid,
+			Email:    id.Email,
+			Username: user.Username,
 		})
+	} else {
+		ctx.AbortWithStatus(http.StatusInternalServerError)
 	}
 }

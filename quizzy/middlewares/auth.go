@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+type Identity struct {
+	Uid   string
+	Email string
+}
+
 func RequireAuth(ctx *gin.Context) {
 	token := strings.TrimSpace(strings.TrimLeft(ctx.GetHeader("Authorization"), "Bearer"))
 
@@ -22,6 +27,14 @@ func RequireAuth(ctx *gin.Context) {
 		ctx.AbortWithStatus(401)
 	} else {
 		ctx.Set("user-token", tok)
+		ctx.Set("identity", Identity{
+			Uid:   tok.UID,
+			Email: tok.Claims["email"].(string),
+		})
 		ctx.Next()
 	}
+}
+
+func UseIdentity(ctx *gin.Context) Identity {
+	return ctx.MustGet("identity").(Identity)
 }
