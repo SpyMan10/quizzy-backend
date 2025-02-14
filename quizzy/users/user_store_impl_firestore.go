@@ -9,27 +9,36 @@ type fireStoreAdapter struct {
 	client *firestore.Client
 }
 
-func ConfigureUserStore(client *firestore.Client) UserStore {
+func ConfigureStore(client *firestore.Client) Store {
 	return &fireStoreAdapter{client}
 }
 
-func (fs *fireStoreAdapter) Upsert(user User) error {
-	_, err := fs.client.Collection("users").Doc(user.Uid).Set(context.Background(), user)
+func (fs *fireStoreAdapter) Upsert(user Document) error {
+	_, err := fs.client.
+		Collection("users").
+		Doc(user.Uid).
+		Set(context.Background(), user)
 	return err
 }
 
-func (fs *fireStoreAdapter) GetUnique(uid string) (User, error) {
-	doc, err := fs.client.Collection("users").Doc(uid).Get(context.Background())
+func (fs *fireStoreAdapter) GetUnique(uid string) (Document, error) {
+	doc, err := fs.client.
+		Collection("users").
+		Doc(uid).
+		Get(context.Background())
+
 	if err != nil {
-		return User{}, err
+		return Document{}, err
 	}
 
 	if !doc.Exists() {
-		return User{}, ErrNotFound
+		return Document{}, ErrNotFound
 	}
 
-	return User{
-		Uid:      uid,
-		Username: doc.Data()["Username"].(string),
-	}, nil
+	var user Document
+	if err2 := doc.DataTo(&user); err2 != nil {
+		return user, err2
+	}
+
+	return user, nil
 }

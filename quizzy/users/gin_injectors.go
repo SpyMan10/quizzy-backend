@@ -5,14 +5,14 @@ import (
 	svc "quizzy.app/backend/quizzy/services"
 )
 
-func useUserStore(ctx *gin.Context) UserStore {
-	return ctx.MustGet("user-store").(UserStore)
+func useStore(ctx *gin.Context) Store {
+	return ctx.MustGet("user-store").(Store)
 }
 
-func provideUserStore(ctx *gin.Context) {
+func provideStore(ctx *gin.Context) {
 	fb := ctx.MustGet("firebase-services").(svc.FirebaseServices)
 
 	if fb.Store != nil {
-		ctx.Set("user-store", ConfigureUserStore(fb.Store))
+		ctx.Set("user-store", ConfigureStore(fb.Store))
 	}
 }

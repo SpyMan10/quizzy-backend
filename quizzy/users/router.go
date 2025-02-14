@@ -7,26 +7,26 @@ import (
 )
 
 func ConfigureRoutes(rt *gin.RouterGroup) {
-	secured := rt.Group("/users", middlewares.RequireAuth, provideUserStore)
+	secured := rt.Group("/users", middlewares.RequireAuth, provideStore)
 	secured.POST("", handlePostUser)
 	secured.GET("/me", handleGetSelf)
 }
 
-type userRegistrationRequest struct {
+type CreateUserRequest struct {
 	Username string `json:"username"`
 }
 
 func handlePostUser(ctx *gin.Context) {
 	id := middlewares.UseIdentity(ctx)
-	ufc := userRegistrationRequest{}
 
-	if err := ctx.ShouldBindJSON(&ufc); err != nil {
+	var req CreateUserRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
-	store := useUserStore(ctx)
-	if err := store.Upsert(User{Username: ufc.Username, Uid: id.Uid}); err != nil {
+	store := useStore(ctx)
+	if err := store.Upsert(Document{Username: req.Username, Email: id.Email, Uid: id.Uid}); err != nil {
 		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
@@ -34,23 +34,14 @@ func handlePostUser(ctx *gin.Context) {
 	ctx.Status(http.StatusCreated)
 }
 
-type UserResponse struct {
-	Uid      string `json:"uid"`
-	Email    string `json:"email"`
-	Username string `json:"username"`
-}
-
 func handleGetSelf(ctx *gin.Context) {
 	id := middlewares.UseIdentity(ctx)
-	store := useUserStore(ctx)
+	store := useStore(ctx)
 
 	if user, err := store.GetUnique(id.Uid); err == nil {
-		ctx.JSON(http.StatusOK, UserResponse{
-			Uid:      user.Uid,
-			Email:    id.Email,
-			Username: user.Username,
-		})
-	} else {
-		ctx.AbortWithStatus(http.StatusInternalServerError)
+		ctx.JSON(http.StatusOK, user)
+		return
 	}
+
+	ctx.AbortWithStatus(http.StatusInternalServerError)
 }

@@ -10,26 +10,15 @@ import (
 
 func Run() {
 	config := cfg.LoadCfgFromEnv()
+	setGinMode(config.Env)
 
-	switch config.Env {
-	case cfg.EnvDevelopment:
-		gin.SetMode(gin.DebugMode)
-		break
-	case cfg.EnvTest:
-		gin.SetMode(gin.TestMode)
-		break
-	default:
-		gin.SetMode(gin.ReleaseMode)
-		break
-	}
-
-	log.Printf("running mode : %s\n", config.Env)
+	log.Printf("application running in %s mode.\n", config.Env)
 
 	// Initializing GIN engine.
 	engine := gin.Default()
+	//engine.Use(cors.Default())
 
-	// Creating base router.
-	router := engine.Group("/")
+	router := engine.Group(config.BasePath)
 
 	// Configure database provider.
 	// Firebase access is injected here into GIN context,
@@ -48,5 +37,19 @@ func Run() {
 	// Running server...
 	if err := engine.Run(config.Addr); err != nil {
 		log.Fatalf("Failed to start server on %s: %s", config.Addr, err)
+	}
+}
+
+func setGinMode(env string) {
+	switch env {
+	case cfg.EnvDevelopment:
+		gin.SetMode(gin.DebugMode)
+		break
+	case cfg.EnvTest:
+		gin.SetMode(gin.TestMode)
+		break
+	default:
+		gin.SetMode(gin.ReleaseMode)
+		break
 	}
 }

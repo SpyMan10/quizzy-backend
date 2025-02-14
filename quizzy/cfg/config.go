@@ -1,6 +1,8 @@
 package cfg
 
-import "os"
+import (
+	"os"
+)
 
 const (
 	EnvDevelopment = "DEVELOPMENT"
@@ -15,6 +17,8 @@ type AppConfig struct {
 	Addr string
 	// Firebase configuration file.
 	FirebaseConfFile string
+	// Base url path.
+	BasePath string
 }
 
 // getEnvDefault fetch environment variable from the given key and return it if found,
@@ -32,5 +36,6 @@ func LoadCfgFromEnv() AppConfig {
 		Env:              getEnvDefault("APP_ENV", EnvProduction),
 		Addr:             getEnvDefault("APP_ADDR", ":8000"),
 		FirebaseConfFile: os.Getenv("APP_FIREBASE_CONF_FILE"),
+		BasePath:         getEnvDefault("APP_BASE_PATH", "/"),
 	}
 }

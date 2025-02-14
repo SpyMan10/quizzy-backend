@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/gin-gonic/gin"
 	"log"
+	"net/http"
 	svc "quizzy.app/backend/quizzy/services"
 	"strings"
 )
@@ -18,13 +19,13 @@ func RequireAuth(ctx *gin.Context) {
 
 	if len(token) == 0 {
 		log.Println("missing authorization token")
-		ctx.AbortWithStatus(401)
+		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
 	services := ctx.MustGet("firebase-services").(svc.FirebaseServices)
 	if tok, err := services.Auth.VerifyIDTokenAndCheckRevoked(context.Background(), token); err != nil {
-		ctx.AbortWithStatus(401)
+		ctx.AbortWithStatus(http.StatusUnauthorized)
 	} else {
 		ctx.Set("user-token", tok)
 		ctx.Set("identity", Identity{
