@@ -3,6 +3,7 @@ package quiz
 import (
 	"cloud.google.com/go/firestore"
 	"context"
+	"fmt"
 	"strings"
 )
 
@@ -46,6 +47,11 @@ func (fs *fireStoreAdapter) GetUnique(ownerId, uid string) (Quiz, error) {
 	} else {
 		quiz.Questions = qs
 	}
+	if canStart(&quiz) {
+		quiz.Links = Links{
+			Start: fmt.Sprintf("/api/quiz/%s/start", quiz.Id),
+		}
+	}
 
 	return quiz, nil
 }
@@ -75,7 +81,11 @@ func (fs *fireStoreAdapter) GetQuizzes(ownerId string) ([]Quiz, error) {
 		} else {
 			quiz.Questions = questions
 		}
-
+		if canStart(&quiz) {
+			quiz.Links = Links{
+				Start: fmt.Sprintf("/api/quiz/%s/start", quiz.Id),
+			}
+		}
 		arr = append(arr, quiz)
 	}
 
