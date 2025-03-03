@@ -15,6 +15,10 @@ type FieldPatchOp struct {
 	Path  string `json:"path"`
 	Value any    `json:"value"`
 }
+type Links struct {
+	Create string `json:"create,omitempty"`
+	Start  string `json:"start,omitempty"`
+}
 
 // Quiz describe available data for a quiz.
 type Quiz struct {
@@ -22,6 +26,7 @@ type Quiz struct {
 	Title       string     `firestore:"title" json:"title"`
 	Description string     `firestore:"description" json:"description"`
 	Questions   []Question `firestore:"-" json:"questions"`
+	Links       Links      `firestore:"-" json:"_links,omitempty"`
 }
 
 type Question struct {

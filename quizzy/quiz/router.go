@@ -2,6 +2,7 @@ package quiz
 
 import (
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"net/http"
@@ -28,7 +29,8 @@ func handleGetQuiz(ctx *gin.Context) {
 }
 
 type QuizzesResponse struct {
-	Data []Quiz `json:"data"`
+	Data  []Quiz `json:"data"`
+	Links Links  `json:"_links"`
 }
 
 func handleGetAllUserQuiz(ctx *gin.Context) {
@@ -38,6 +40,9 @@ func handleGetAllUserQuiz(ctx *gin.Context) {
 	if quizzes, err := store.GetQuizzes(id.Uid); err == nil {
 		ctx.JSON(http.StatusOK, QuizzesResponse{
 			Data: quizzes,
+			Links: Links{
+				Create: "/api/quiz",
+			},
 		})
 		return
 	}
@@ -68,7 +73,7 @@ func handlePostQuiz(ctx *gin.Context) {
 	}
 
 	if err := store.Upsert(id.Uid, quiz); err == nil {
-		ctx.Header("Location", ctx.Request.URL.JoinPath(quiz.Id).RawPath)
+		ctx.Header("Location", fmt.Sprintf("/api/quiz/%s", quiz.Id))
 		ctx.JSON(http.StatusCreated, quiz)
 		return
 	}
