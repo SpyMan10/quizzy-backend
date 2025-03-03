@@ -1,6 +1,8 @@
 package quiz
 
-import "errors"
+import (
+	"errors"
+)
 
 var (
 	ErrNotFound             = errors.New("user not found")
@@ -9,26 +11,27 @@ var (
 )
 
 type FieldPatchOp struct {
-	Op    string      `json:"op"`
-	Path  string      `json:"path"`
-	Value interface{} `json:"value"`
+	Op    string `json:"op"`
+	Path  string `json:"path"`
+	Value any    `json:"value"`
 }
 
-// Document describe available data for a quiz.
-type Document struct {
-	Uid         string     `firestore:"uid" json:"id"`
+// Quiz describe available data for a quiz.
+type Quiz struct {
+	Id          string     `firestore:"-" json:"id"`
 	Title       string     `firestore:"title" json:"title"`
 	Description string     `firestore:"description" json:"description"`
-	Questions   []Question `firestore:"questions" json:"questions,omitempty"`
+	Questions   []Question `firestore:"-" json:"questions"`
 }
 
 type Question struct {
-	Uid     string   `firestore:"uid" json:"uid"`
+	Id      string   `firestore:"-" json:"id"`
 	Title   string   `firestore:"title" json:"title"`
-	Answers []Answer `firestore:"answers" json:"answers,omitempty"`
+	Answers []Answer `firestore:"-" json:"answers"`
 }
 
 type Answer struct {
+	Id        string `firestore:"-" json:"id"`
 	Title     string `firestore:"title" json:"title"`
 	IsCorrect bool   `firestore:"isCorrect" json:"isCorrect"`
 }
@@ -36,15 +39,22 @@ type Answer struct {
 type Store interface {
 	// Upsert Store or update the given user, if no user with the given id exists,
 	// it will be created, otherwise it will be updated.
-	Upsert(ownerId string, quiz Document) error
+	Upsert(ownerId string, quiz Quiz) error
 
 	// GetUnique returns the user matching to the given uid,
 	// otherwise ErrNotFound is returned.
-	GetUnique(ownerId, uid string) (Document, error)
+	GetUnique(ownerId, uid string) (Quiz, error)
 
 	// GetQuizzes returns all quiz owned by the given user.
-	GetQuizzes(ownerId string) ([]Document, error)
+	GetQuizzes(ownerId string) ([]Quiz, error)
 
 	// Patch update the given quiz.
 	Patch(ownerId, uid string, fields []FieldPatchOp) error
+
+	GetUniqueQuestion(ownerId, quizId, questionId string) (Question, error)
+
+	UpsertQuestion(ownerId, quizId string, question Question) error
+
+	// UpdateQuestion patch the given
+	UpdateQuestion(ownerId, quizId string, question Question) error
 }

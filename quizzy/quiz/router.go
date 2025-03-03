@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"net/http"
 	"quizzy.app/backend/quizzy/middlewares"
+	"strings"
 )
 
 func ConfigureRoutes(rt *gin.RouterGroup) {
@@ -17,7 +18,8 @@ func ConfigureRoutes(rt *gin.RouterGroup) {
 	quiz.GET("", handleGetQuiz)
 	quiz.PATCH("", handlePatchQuiz)
 	quiz.GET("/questions", handleGetQuestions)
-	quiz.POST("/questions", handlePostQuiz)
+	quiz.POST("/questions", handlePostQuestion)
+	quiz.PUT("/questions/:question-id", provideQuestion, handlePutQuestion)
 }
 
 func handleGetQuiz(ctx *gin.Context) {
@@ -26,7 +28,7 @@ func handleGetQuiz(ctx *gin.Context) {
 }
 
 type QuizzesResponse struct {
-	Data []Document `json:"data"`
+	Data []Quiz `json:"data"`
 }
 
 func handleGetAllUserQuiz(ctx *gin.Context) {
@@ -59,27 +61,27 @@ func handlePostQuiz(ctx *gin.Context) {
 		return
 	}
 
-	quiz := Document{
-		Uid:         uuid.New().String(),
+	quiz := Quiz{
+		Id:          uuid.New().String(),
 		Title:       req.Title,
 		Description: req.Description,
 	}
 
 	if err := store.Upsert(id.Uid, quiz); err == nil {
-		ctx.Header("Location", ctx.Request.URL.JoinPath(quiz.Uid).RawPath)
+		ctx.Header("Location", ctx.Request.URL.JoinPath(quiz.Id).RawPath)
 		ctx.JSON(http.StatusCreated, quiz)
 		return
 	}
 
 	// WARNING / WARNING / WARNING //
-	// If this code-path is reached, it means that the requested user has never
-	// been registered in our firestore.
+	// If this code-path is reached, it means that the requested user was never
+	// registered in our firestore.
 	// WARNING / WARNING / WARNING //
 
 	// This may happen if client does some weird things...
 	// We should never let the client decide about this process,
 	// user registration must be done in single request (Client->Server), or we must use pub/sub
-	// from firebase to firestore to store user automatically to avoid data consistency issues.
+	// from firebase to store user automatically to avoid data consistency issues.
 	ctx.AbortWithStatus(http.StatusInternalServerError)
 }
 
@@ -96,7 +98,7 @@ func handlePatchQuiz(ctx *gin.Context) {
 		return
 	}
 
-	if err := store.Patch(id.Uid, quiz.Uid, req); err == nil {
+	if err := store.Patch(id.Uid, quiz.Id, req); err == nil {
 		ctx.Status(http.StatusNoContent)
 	} else if errors.Is(err, ErrInvalidPatchOperator) || errors.Is(err, ErrInvalidPatchField) {
 		ctx.AbortWithStatus(http.StatusBadRequest)
@@ -121,22 +123,63 @@ func handlePostQuestion(ctx *gin.Context) {
 		return
 	}
 
-	// Appending question.
-	quiz.Questions = append(quiz.Questions, Question{
+	question := Question{
+		Id:      uuid.New().String(),
 		Title:   req.Title,
-		Uid:     uuid.New().String(),
 		Answers: req.Answers,
-	})
+	}
+	err := store.UpsertQuestion(id.Uid, quiz.Id, question)
 
-	if store.Upsert(id.Uid, quiz) != nil {
+	if err != nil {
 		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
+	ctx.Header("Location", strings.Join([]string{"quiz", quiz.Id, "questions", question.Id}, "/"))
 	ctx.Status(http.StatusCreated)
 }
 
 func handleGetQuestions(ctx *gin.Context) {
 	quiz := useQuiz(ctx)
 	ctx.JSON(http.StatusOK, quiz.Questions)
+}
+
+type UnidentifiedAnswer struct {
+	Title     string `json:"title"`
+	IsCorrect bool   `json:"isCorrect"`
+}
+
+type UpdateQuestionRequest struct {
+	Title   string               `json:"title"`
+	Answers []UnidentifiedAnswer `json:"answers"`
+}
+
+func handlePutQuestion(ctx *gin.Context) {
+	id := middlewares.UseIdentity(ctx)
+	store := useStore(ctx)
+	quiz := useQuiz(ctx)
+	question := useQuestion(ctx)
+
+	var payload UpdateQuestionRequest
+	if err := ctx.ShouldBindJSON(&payload); err != nil {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	question.Title = payload.Title
+	question.Answers = []Answer{}
+	for _, a := range payload.Answers {
+		question.Answers = append(question.Answers, Answer{
+			Id:        uuid.New().String(),
+			Title:     a.Title,
+			IsCorrect: a.IsCorrect,
+		})
+	}
+
+	if err := store.UpdateQuestion(id.Uid, quiz.Id, question); err != nil {
+		ctx.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+
+	ctx.Status(http.StatusNoContent)
 }

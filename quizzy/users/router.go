@@ -26,7 +26,7 @@ func handlePostUser(ctx *gin.Context) {
 	}
 
 	store := useStore(ctx)
-	if err := store.Upsert(Document{Username: req.Username, Email: id.Email, Uid: id.Uid}); err != nil {
+	if err := store.Upsert(User{Username: req.Username, Email: id.Email, Id: id.Uid}); err != nil {
 		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
