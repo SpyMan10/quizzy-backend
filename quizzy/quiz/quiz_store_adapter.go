@@ -27,6 +27,7 @@ type Quiz struct {
 	Description string     `firestore:"description" json:"description"`
 	Questions   []Question `firestore:"-" json:"questions"`
 	Links       Links      `firestore:"-" json:"_links,omitempty"`
+	Code        string     `firestore:"code" json:"code,omitempty"`
 }
 
 type Question struct {
@@ -62,4 +63,10 @@ type Store interface {
 
 	// UpdateQuestion patch the given
 	UpdateQuestion(ownerId, quizId string, question Question) error
+}
+
+type QuizCodeResolver interface {
+	BindCode(quiz Quiz) error
+	UnbindCode(code string) error
+	GetQuiz(code string) (string, error)
 }

@@ -19,6 +19,8 @@ type AppConfig struct {
 	FirebaseConfFile string
 	// Base url path.
 	BasePath string
+	// URI redis
+	RedisUri string
 }
 
 // getEnvDefault fetch environment variable from the given key and return it if found,
@@ -37,5 +39,6 @@ func LoadCfgFromEnv() AppConfig {
 		Addr:             getEnvDefault("APP_ADDR", ":8000"),
 		FirebaseConfFile: os.Getenv("APP_FIREBASE_CONF_FILE"),
 		BasePath:         getEnvDefault("APP_BASE_PATH", "/"),
+		RedisUri:         os.Getenv("APP_REDIS_URI"),
 	}
 }
