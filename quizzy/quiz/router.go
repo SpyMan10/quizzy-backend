@@ -21,6 +21,7 @@ func ConfigureRoutes(rt *gin.RouterGroup) {
 	quiz.GET("/questions", handleGetQuestions)
 	quiz.POST("/questions", handlePostQuestion)
 	quiz.PUT("/questions/:question-id", provideQuestion, handlePutQuestion)
+	quiz.POST("/start", provideCodeResolver, handleStartQuiz)
 }
 
 func handleGetQuiz(ctx *gin.Context) {
@@ -65,17 +66,19 @@ func handlePostQuiz(ctx *gin.Context) {
 		ctx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
+	if code, err := GenerateCode(); err == nil {
+		quiz := Quiz{
+			Id:          uuid.New().String(),
+			Title:       req.Title,
+			Description: req.Description,
+			Code:        code,
+		}
 
-	quiz := Quiz{
-		Id:          uuid.New().String(),
-		Title:       req.Title,
-		Description: req.Description,
-	}
-
-	if err := store.Upsert(id.Uid, quiz); err == nil {
-		ctx.Header("Location", fmt.Sprintf("/api/quiz/%s", quiz.Id))
-		ctx.JSON(http.StatusCreated, quiz)
-		return
+		if err2 := store.Upsert(id.Uid, quiz); err2 == nil {
+			ctx.Header("Location", fmt.Sprintf("/api/quiz/%s", quiz.Id))
+			ctx.JSON(http.StatusCreated, quiz)
+			return
+		}
 	}
 
 	// WARNING / WARNING / WARNING //
@@ -187,4 +190,20 @@ func handlePutQuestion(ctx *gin.Context) {
 	}
 
 	ctx.Status(http.StatusNoContent)
+}
+
+func handleStartQuiz(ctx *gin.Context) {
+	resolver := useCodeResolver(ctx)
+	quiz := useQuiz(ctx)
+	if !canStart(&quiz) {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	if err := resolver.BindCode(quiz); err != nil {
+		ctx.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+	ctx.Header("Location", fmt.Sprintf("http://localhost:4200/execution/%s", quiz.Code))
+	ctx.Status(http.StatusCreated)
 }

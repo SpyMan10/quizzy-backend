@@ -3,6 +3,7 @@ package quiz
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"net/http"
 	"quizzy.app/backend/quizzy/middlewares"
 	svc "quizzy.app/backend/quizzy/services"
@@ -18,6 +19,19 @@ func provideStore(ctx *gin.Context) {
 	if fb.Store != nil {
 		ctx.Set("quiz-store", ConfigureStore(fb.Store))
 	}
+}
+func provideCodeResolver(ctx *gin.Context) {
+	rs := ctx.MustGet("redis-service").(*redis.Client)
+
+	if rs != nil {
+		ctx.Set("quiz-code-resolver", &redisAdapter{
+			client: rs,
+		})
+	}
+}
+
+func useCodeResolver(ctx *gin.Context) QuizCodeResolver {
+	return ctx.MustGet("quiz-code-resolver").(QuizCodeResolver)
 }
 
 func useQuiz(ctx *gin.Context) Quiz {
