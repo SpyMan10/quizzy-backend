@@ -1,4 +1,4 @@
-package quizzes
+package quiz
 
 import (
 	"errors"
@@ -20,7 +20,7 @@ type Links struct {
 	Start  string `json:"start,omitempty"`
 }
 
-// Quiz describe available data for a quizzes.
+// Quiz describe available data for a quiz.
 type Quiz struct {
 	Id          string     `firestore:"-" json:"id"`
 	Title       string     `firestore:"title" json:"title"`
@@ -51,10 +51,10 @@ type Store interface {
 	// otherwise ErrNotFound is returned.
 	GetUnique(ownerId, uid string) (Quiz, error)
 
-	// GetQuizzes returns all quizzes owned by the given user.
+	// GetQuizzes returns all quiz owned by the given user.
 	GetQuizzes(ownerId string) ([]Quiz, error)
 
-	// Patch update the given quizzes.
+	// Patch update the given quiz.
 	Patch(ownerId, uid string, fields []FieldPatchOp) error
 
 	GetUniqueQuestion(ownerId, quizId, questionId string) (Question, error)
@@ -66,7 +66,7 @@ type Store interface {
 }
 
 type QuizCodeResolver interface {
-	BindCode(ownerId string, quiz Quiz) error
+	BindCode(quiz Quiz) error
 	UnbindCode(code string) error
 	GetQuiz(code string) (string, error)
 }

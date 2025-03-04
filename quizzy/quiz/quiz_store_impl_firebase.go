@@ -1,4 +1,4 @@
-package quizzes
+package quiz
 
 import (
 	"cloud.google.com/go/firestore"

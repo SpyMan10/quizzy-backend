@@ -11,5 +11,4 @@ func ConfigureRouting(router *gin.RouterGroup) {
 	ping.ConfigureRoutes(router)
 	users.ConfigureRoutes(router)
 	quizzes.ConfigureRoutes(router)
-	
 }

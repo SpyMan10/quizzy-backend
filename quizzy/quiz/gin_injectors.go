@@ -1,4 +1,4 @@
-package quizzes
+package quiz
 
 import (
 	"errors"

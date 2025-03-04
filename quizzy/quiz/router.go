@@ -1,4 +1,4 @@
-package quizzes
+package quiz
 
 import (
 	"errors"
@@ -11,7 +11,6 @@ import (
 )
 
 func ConfigureRoutes(rt *gin.RouterGroup) {
-	configureWs(rt)
 	secured := rt.Group("/quiz", middlewares.RequireAuth, provideStore)
 	secured.GET("", handleGetAllUserQuiz)
 	secured.POST("", handlePostQuiz)
@@ -30,7 +29,7 @@ func handleGetQuiz(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, quiz)
 }
 
-type UserQuizzesResponse struct {
+type QuizzesResponse struct {
 	Data  []Quiz `json:"data"`
 	Links Links  `json:"_links"`
 }
@@ -40,7 +39,7 @@ func handleGetAllUserQuiz(ctx *gin.Context) {
 	store := useStore(ctx)
 
 	if quizzes, err := store.GetQuizzes(id.Uid); err == nil {
-		ctx.JSON(http.StatusOK, UserQuizzesResponse{
+		ctx.JSON(http.StatusOK, QuizzesResponse{
 			Data: quizzes,
 			Links: Links{
 				Create: "/api/quiz",
@@ -144,7 +143,7 @@ func handlePostQuestion(ctx *gin.Context) {
 		return
 	}
 
-	ctx.Header("Location", strings.Join([]string{"api/quiz", quiz.Id, "questions", question.Id}, "/"))
+	ctx.Header("Location", strings.Join([]string{"quiz", quiz.Id, "questions", question.Id}, "/"))
 	ctx.Status(http.StatusCreated)
 }
 
@@ -195,15 +194,13 @@ func handlePutQuestion(ctx *gin.Context) {
 
 func handleStartQuiz(ctx *gin.Context) {
 	resolver := useCodeResolver(ctx)
-	identity := middlewares.UseIdentity(ctx)
 	quiz := useQuiz(ctx)
 	if !canStart(&quiz) {
 		ctx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
-	if err := resolver.BindCode(identity.Uid, quiz); err != nil {
-		fmt.Println(err.Error())
+	if err := resolver.BindCode(quiz); err != nil {
 		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
