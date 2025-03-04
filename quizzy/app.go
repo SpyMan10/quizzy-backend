@@ -5,15 +5,17 @@ import (
 	"log"
 	"quizzy.app/backend/quizzy/cfg"
 	quizzyhttp "quizzy.app/backend/quizzy/http"
-	"quizzy.app/backend/quizzy/quiz"
 	"quizzy.app/backend/quizzy/services"
 )
 
 func Run() {
 	config := cfg.LoadCfgFromEnv()
+
+	// Configure GIN execution mode (dev, test, production).
 	setGinMode(config.Env)
+
 	log.Printf("application running in %s mode.\n", config.Env)
-	quiz.GenerateCode()
+
 	// Initializing GIN engine.
 	engine := gin.Default()
 	//engine.Use(cors.Default())

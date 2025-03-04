@@ -1,4 +1,4 @@
-package quiz
+package quizzes
 
 import (
 	"crypto/rand"

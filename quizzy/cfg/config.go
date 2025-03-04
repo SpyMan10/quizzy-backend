@@ -2,6 +2,7 @@ package cfg
 
 import (
 	"os"
+	"strings"
 )
 
 const (
@@ -37,8 +38,20 @@ func getEnvDefault(key, def string) string {
 
 // LoadCfgFromEnv generate a new AppConfig from environment.
 func LoadCfgFromEnv() AppConfig {
+	env := strings.ToUpper(getEnvDefault("APP_ENV", EnvProduction))
+	
+	switch env {
+	case EnvDevelopment:
+	case EnvProduction:
+	case EnvTest:
+		break
+	default:
+		env = EnvProduction
+		break
+	}
+
 	return AppConfig{
-		Env:              getEnvDefault("APP_ENV", EnvProduction),
+		Env:              env,
 		Addr:             getEnvDefault("APP_ADDR", ":8000"),
 		FirebaseConfFile: os.Getenv("APP_FIREBASE_CONF_FILE"),
 		BasePath:         getEnvDefault("APP_BASE_PATH", "/"),

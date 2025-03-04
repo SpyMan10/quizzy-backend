@@ -1,4 +1,4 @@
-package quiz
+package quizzes
 
 func canStart(quiz *Quiz) bool {
 	if len(quiz.Title) == 0 {
