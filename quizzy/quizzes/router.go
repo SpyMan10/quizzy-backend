@@ -204,6 +204,6 @@ func handleStartQuiz(ctx *gin.Context) {
 		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-	ctx.Header("Location", fmt.Sprintf("/api/execution/%s", quiz.Code))
+	ctx.Header("Location", fmt.Sprintf("http://localhost:4200/execution/%s", quiz.Code))
 	ctx.Status(http.StatusCreated)
 }
