@@ -5,15 +5,15 @@ import (
 	"log"
 	"quizzy.app/backend/quizzy/cfg"
 	quizzyhttp "quizzy.app/backend/quizzy/http"
+	"quizzy.app/backend/quizzy/quiz"
 	"quizzy.app/backend/quizzy/services"
 )
 
 func Run() {
 	config := cfg.LoadCfgFromEnv()
 	setGinMode(config.Env)
-
 	log.Printf("application running in %s mode.\n", config.Env)
-
+	quiz.GenerateCode()
 	// Initializing GIN engine.
 	engine := gin.Default()
 	//engine.Use(cors.Default())
@@ -28,6 +28,12 @@ func Run() {
 		// Firestore can be initialized each time we need it.
 		if client, err := services.ConfigureFirebase(config); err == nil {
 			ctx.Set("firebase-services", client)
+		}
+	})
+	router.Use(func(ctx *gin.Context) {
+		redis := services.ConfigureRedis(config)
+		if redis != nil {
+			ctx.Set("redis-service", redis)
 		}
 	})
 
