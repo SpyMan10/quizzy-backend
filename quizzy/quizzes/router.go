@@ -29,7 +29,7 @@ func handleGetQuiz(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, quiz)
 }
 
-type QuizzesResponse struct {
+type UserQuizzesResponse struct {
 	Data  []Quiz `json:"data"`
 	Links Links  `json:"_links"`
 }
@@ -39,10 +39,10 @@ func handleGetAllUserQuiz(ctx *gin.Context) {
 	store := useStore(ctx)
 
 	if quizzes, err := store.GetQuizzes(id.Uid); err == nil {
-		ctx.JSON(http.StatusOK, QuizzesResponse{
+		ctx.JSON(http.StatusOK, UserQuizzesResponse{
 			Data: quizzes,
 			Links: Links{
-				Create: "/api/quizzes",
+				Create: "/api/quiz",
 			},
 		})
 		return
@@ -75,7 +75,7 @@ func handlePostQuiz(ctx *gin.Context) {
 		}
 
 		if err2 := store.Upsert(id.Uid, quiz); err2 == nil {
-			ctx.Header("Location", fmt.Sprintf("/api/quizzes/%s", quiz.Id))
+			ctx.Header("Location", fmt.Sprintf("/api/quiz/%s", quiz.Id))
 			ctx.JSON(http.StatusCreated, quiz)
 			return
 		}
@@ -143,7 +143,7 @@ func handlePostQuestion(ctx *gin.Context) {
 		return
 	}
 
-	ctx.Header("Location", strings.Join([]string{"quizzes", quiz.Id, "questions", question.Id}, "/"))
+	ctx.Header("Location", strings.Join([]string{"api", "quiz", quiz.Id, "questions", question.Id}, "/"))
 	ctx.Status(http.StatusCreated)
 }
 

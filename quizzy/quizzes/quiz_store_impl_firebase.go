@@ -49,7 +49,7 @@ func (fs *fireStoreAdapter) GetUnique(ownerId, uid string) (Quiz, error) {
 	}
 	if canStart(&quiz) {
 		quiz.Links = Links{
-			Start: fmt.Sprintf("/api/quizzes/%s/start", quiz.Id),
+			Start: fmt.Sprintf("/api/quiz/%s/start", quiz.Id),
 		}
 	}
 
@@ -83,7 +83,7 @@ func (fs *fireStoreAdapter) GetQuizzes(ownerId string) ([]Quiz, error) {
 		}
 		if canStart(&quiz) {
 			quiz.Links = Links{
-				Start: fmt.Sprintf("/api/quizzes/%s/start", quiz.Id),
+				Start: fmt.Sprintf("/api/quiz/%s/start", quiz.Id),
 			}
 		}
 		arr = append(arr, quiz)
