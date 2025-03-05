@@ -47,9 +47,9 @@ func (fs *fireStoreAdapter) GetUnique(ownerId, uid string) (Quiz, error) {
 	} else {
 		quiz.Questions = qs
 	}
-	if canStart(&quiz) {
+	if isQuizReadyToStart(&quiz) {
 		quiz.Links = Links{
-			Start: fmt.Sprintf("/api/quiz/%s/start", quiz.Id),
+			Start: fmt.Sprintf("http://lcoalhost:8000/api/quiz/%s/start", quiz.Id),
 		}
 	}
 
@@ -81,9 +81,9 @@ func (fs *fireStoreAdapter) GetQuizzes(ownerId string) ([]Quiz, error) {
 		} else {
 			quiz.Questions = questions
 		}
-		if canStart(&quiz) {
+		if isQuizReadyToStart(&quiz) {
 			quiz.Links = Links{
-				Start: fmt.Sprintf("/api/quiz/%s/start", quiz.Id),
+				Start: fmt.Sprintf("http://localhost:8000/api/quiz/%s/start", quiz.Id),
 			}
 		}
 		arr = append(arr, quiz)

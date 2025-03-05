@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	socketio "github.com/googollee/go-socket.io"
 	"net/http"
 	"quizzy.app/backend/quizzy/middlewares"
-	"strings"
 )
 
-func ConfigureRoutes(rt *gin.RouterGroup) {
+func ConfigureRoutes(rt *gin.RouterGroup, ws *socketio.Server) {
+	// Settings up SocketIO configuration for quiz module.
+	configureSocketIo(rt, ws)
+
 	secured := rt.Group("/quiz", middlewares.RequireAuth, provideStore)
 	secured.GET("", handleGetAllUserQuiz)
 	secured.POST("", handlePostQuiz)
@@ -143,7 +146,7 @@ func handlePostQuestion(ctx *gin.Context) {
 		return
 	}
 
-	ctx.Header("Location", strings.Join([]string{"api", "quiz", quiz.Id, "questions", question.Id}, "/"))
+	ctx.Header("Location", fmt.Sprintf("http://localhost:8000/api/quiz/%s/questions/%s", quiz.Id, question.Id))
 	ctx.Status(http.StatusCreated)
 }
 
@@ -194,16 +197,20 @@ func handlePutQuestion(ctx *gin.Context) {
 
 func handleStartQuiz(ctx *gin.Context) {
 	resolver := useCodeResolver(ctx)
+	identity := middlewares.UseIdentity(ctx)
 	quiz := useQuiz(ctx)
-	if !canStart(&quiz) {
+
+	if !isQuizReadyToStart(&quiz) {
 		ctx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
-	if err := resolver.BindCode(quiz); err != nil {
+	if err := resolver.BindCode(identity.Uid, quiz); err != nil {
+		fmt.Println(err.Error())
 		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-	ctx.Header("Location", fmt.Sprintf("/api/execution/%s", quiz.Code))
+
+	ctx.Header("Location", fmt.Sprintf("http://localhost:8000/api/execution/%s", quiz.Code))
 	ctx.Status(http.StatusCreated)
 }

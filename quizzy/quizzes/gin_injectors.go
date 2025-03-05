@@ -10,41 +10,41 @@ import (
 )
 
 func useStore(ctx *gin.Context) Store {
-	return ctx.MustGet("quizzes-store").(Store)
+	return ctx.MustGet("quiz-store").(Store)
 }
 
 func provideStore(ctx *gin.Context) {
 	fb := ctx.MustGet("firebase-services").(svc.FirebaseServices)
 
 	if fb.Store != nil {
-		ctx.Set("quizzes-store", ConfigureStore(fb.Store))
+		ctx.Set("quiz-store", ConfigureStore(fb.Store))
 	}
 }
 func provideCodeResolver(ctx *gin.Context) {
 	rs := ctx.MustGet("redis-service").(*redis.Client)
 
 	if rs != nil {
-		ctx.Set("quizzes-code-resolver", &redisAdapter{
+		ctx.Set("quiz-code-resolver", &redisAdapter{
 			client: rs,
 		})
 	}
 }
 
 func useCodeResolver(ctx *gin.Context) QuizCodeResolver {
-	return ctx.MustGet("quizzes-code-resolver").(QuizCodeResolver)
+	return ctx.MustGet("quiz-code-resolver").(QuizCodeResolver)
 }
 
 func useQuiz(ctx *gin.Context) Quiz {
-	return ctx.MustGet("current-quizzes").(Quiz)
+	return ctx.MustGet("current-quiz").(Quiz)
 }
 
 func provideQuiz(ctx *gin.Context) {
 	id := middlewares.UseIdentity(ctx)
 	store := useStore(ctx)
-	qid := ctx.Param("quizzes-id")
+	qid := ctx.Param("quiz-id")
 
 	if quiz, err := store.GetUnique(id.Uid, qid); err == nil {
-		ctx.Set("current-quizzes", quiz)
+		ctx.Set("current-quiz", quiz)
 	} else if errors.Is(err, ErrNotFound) {
 		ctx.AbortWithStatus(http.StatusNotFound)
 	} else {

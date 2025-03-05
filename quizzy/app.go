@@ -1,11 +1,15 @@
 package quizzy
 
 import (
+	"fmt"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	socketio "github.com/googollee/go-socket.io"
 	"log"
 	"quizzy.app/backend/quizzy/cfg"
 	quizzyhttp "quizzy.app/backend/quizzy/http"
 	"quizzy.app/backend/quizzy/services"
+	"time"
 )
 
 func Run() {
@@ -18,9 +22,19 @@ func Run() {
 
 	// Initializing GIN engine.
 	engine := gin.Default()
-	//engine.Use(cors.Default())
+	engine.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:4200"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	router := engine.Group(config.BasePath)
+	router.Use(func(c *gin.Context) {
+		c.Set("global-config", config)
+	})
 
 	// Configure database provider.
 	// Firebase access is injected here into GIN context,
@@ -30,21 +44,33 @@ func Run() {
 		// Firestore can be initialized each time we need it.
 		if client, err := services.ConfigureFirebase(config); err == nil {
 			ctx.Set("firebase-services", client)
+		} else {
+			fmt.Printf("failed to initialize firebase services: %s\n", err)
 		}
 	})
 	router.Use(func(ctx *gin.Context) {
-		redis := services.ConfigureRedis(config)
-		if redis != nil {
+		if redis := services.ConfigureRedis(config); redis != nil {
 			ctx.Set("redis-service", redis)
+		} else {
+			fmt.Println("failed to initialize redis connection.")
 		}
 	})
 
-	// Initializing HTTP routes.
-	quizzyhttp.ConfigureRouting(router)
+	// Initializing SocketIO server.
+	ws := socketio.NewServer(nil)
+
+	// Initializing HTTP routes and SocketIO.
+	quizzyhttp.ConfigureRouting(router, ws)
+
+	go func() {
+		if err := ws.Serve(); err != nil {
+			log.Fatalf("failed to run WS server: %s\n", err)
+		}
+	}()
 
 	// Running server...
 	if err := engine.Run(config.Addr); err != nil {
-		log.Fatalf("Failed to start server on %s: %s", config.Addr, err)
+		log.Fatalf("Failed to start server on %s: %s\n", config.Addr, err)
 	}
 }
 

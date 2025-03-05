@@ -1,6 +1,6 @@
 package quizzes
 
-func canStart(quiz *Quiz) bool {
+func isQuizReadyToStart(quiz *Quiz) bool {
 	if len(quiz.Title) == 0 {
 		return false
 	}

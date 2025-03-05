@@ -66,7 +66,7 @@ type Store interface {
 }
 
 type QuizCodeResolver interface {
-	BindCode(quiz Quiz) error
+	BindCode(ownerId string, quiz Quiz) error
 	UnbindCode(code string) error
 	GetQuiz(code string) (string, error)
 }
