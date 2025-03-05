@@ -1,18 +1,31 @@
 package users
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"quizzy.app/backend/quizzy/cfg"
 	svc "quizzy.app/backend/quizzy/services"
 )
 
-func useStore(ctx *gin.Context) Store {
-	return ctx.MustGet("user-store").(Store)
+const KeyUserService = "user-service"
+
+func UseService(ctx *gin.Context) UserService {
+	return ctx.MustGet(KeyUserService).(UserService)
 }
 
-func provideStore(ctx *gin.Context) {
-	fb := ctx.MustGet("firebase-services").(svc.FirebaseServices)
+func ProvideService(ctx *gin.Context) {
+	conf := cfg.UseConfig(ctx)
 
-	if fb.Store != nil {
-		ctx.Set("user-store", ConfigureStore(fb.Store))
+	if !conf.Env.IsTest() {
+		fb := ctx.MustGet("firebase-services").(svc.FirebaseServices)
+
+		if fb.Store != nil {
+			ctx.Set(KeyUserService, &UserServiceImpl{Store: ConfigureStore(fb.Store)})
+		}
+
+		fmt.Printf("info: user-service plugged in to firestore.\n")
+	} else {
+		ctx.Set(KeyUserService, DummyUserStoreImpl{})
+		fmt.Printf("info: user-service plugged in to dummy impl.\n")
 	}
 }

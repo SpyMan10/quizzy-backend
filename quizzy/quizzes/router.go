@@ -7,45 +7,76 @@ import (
 	"github.com/google/uuid"
 	socketio "github.com/googollee/go-socket.io"
 	"net/http"
-	"quizzy.app/backend/quizzy/middlewares"
+	"quizzy.app/backend/quizzy/auth"
 )
 
 func ConfigureRoutes(rt *gin.RouterGroup, ws *socketio.Server) {
 	// Settings up SocketIO configuration for quiz module.
 	configureSocketIo(rt, ws)
 
-	secured := rt.Group("/quiz", middlewares.RequireAuth, provideStore)
+	secured := rt.Group("/quiz", auth.RequireAuthenticated, ProvideService)
 	secured.GET("", handleGetAllUserQuiz)
 	secured.POST("", handlePostQuiz)
 
-	quiz := secured.Group("/:quiz-id", provideQuiz)
+	quiz := secured.Group("/:quiz-id", ProvideQuiz)
 	quiz.GET("", handleGetQuiz)
 	quiz.PATCH("", handlePatchQuiz)
 	quiz.GET("/questions", handleGetQuestions)
 	quiz.POST("/questions", handlePostQuestion)
-	quiz.PUT("/questions/:question-id", provideQuestion, handlePutQuestion)
-	quiz.POST("/start", provideCodeResolver, handleStartQuiz)
+	quiz.PUT("/questions/:question-id", ProvideQuestion, handlePutQuestion)
+	quiz.POST("/start", handleStartQuiz)
 }
 
 func handleGetQuiz(ctx *gin.Context) {
-	quiz := useQuiz(ctx)
+	quiz := UseQuiz(ctx)
 	ctx.JSON(http.StatusOK, quiz)
 }
 
+type QuizWithLinks struct {
+	Quiz
+	Links Links `json:"_links"`
+}
+
 type UserQuizzesResponse struct {
-	Data  []Quiz `json:"data"`
-	Links Links  `json:"_links"`
+	Data  []QuizWithLinks `json:"data"`
+	Links Links           `json:"_links"`
+}
+
+func mapMultipleQuizWithLinks(quizzes []Quiz) []QuizWithLinks {
+	qwl := make([]QuizWithLinks, len(quizzes))
+
+	for i := range quizzes {
+		qwl[i] = mapQuizWithLinks(quizzes[i])
+	}
+
+	return qwl
+}
+
+func mapQuizWithLinks(quiz Quiz) QuizWithLinks {
+	lnk := Links{
+		Create: "",
+		Start:  "",
+	}
+
+	if quiz.Validate() {
+		lnk.Start = fmt.Sprintf("http://localhost:8000/quiz/%s/start", quiz.Id)
+	}
+
+	return QuizWithLinks{
+		Quiz:  quiz,
+		Links: lnk,
+	}
 }
 
 func handleGetAllUserQuiz(ctx *gin.Context) {
-	id := middlewares.UseIdentity(ctx)
-	store := useStore(ctx)
+	id := auth.UseIdentity(ctx)
+	service := UseService(ctx)
 
-	if quizzes, err := store.GetQuizzes(id.Uid); err == nil {
+	if quizzes, err := service.GetAll(id.Uid); err == nil {
 		ctx.JSON(http.StatusOK, UserQuizzesResponse{
-			Data: quizzes,
+			Data: mapMultipleQuizWithLinks(quizzes),
 			Links: Links{
-				Create: "/api/quiz",
+				Create: "http://localhost:8000/quiz",
 			},
 		})
 		return
@@ -60,8 +91,8 @@ type CreateQuizRequest struct {
 }
 
 func handlePostQuiz(ctx *gin.Context) {
-	id := middlewares.UseIdentity(ctx)
-	store := useStore(ctx)
+	id := auth.UseIdentity(ctx)
+	service := UseService(ctx)
 
 	// Getting payload from request.
 	var req CreateQuizRequest
@@ -69,6 +100,7 @@ func handlePostQuiz(ctx *gin.Context) {
 		ctx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
+
 	if code, err := GenerateCode(); err == nil {
 		quiz := Quiz{
 			Id:          uuid.New().String(),
@@ -77,8 +109,8 @@ func handlePostQuiz(ctx *gin.Context) {
 			Code:        code,
 		}
 
-		if err2 := store.Upsert(id.Uid, quiz); err2 == nil {
-			ctx.Header("Location", fmt.Sprintf("/api/quiz/%s", quiz.Id))
+		if err2 := service.Create(id.Uid, quiz); err2 == nil {
+			ctx.Header("Location", fmt.Sprintf("http://localhost:8000/quiz/%s", quiz.Id))
 			ctx.JSON(http.StatusCreated, quiz)
 			return
 		}
@@ -91,17 +123,17 @@ func handlePostQuiz(ctx *gin.Context) {
 
 	// This may happen if client does some weird things...
 	// We should never let the client decide about this process,
-	// user registration must be done in single request (Client->Server), or we must use pub/sub
-	// from firebase to store user automatically to avoid data consistency issues.
+	// user registration must be done in single request (Client->Server), or we must use pub/sub (or something similar)
+	// from firebase to service user automatically to avoid data consistency issues.
 	ctx.AbortWithStatus(http.StatusInternalServerError)
 }
 
 type PatchQuizRequest []FieldPatchOp
 
 func handlePatchQuiz(ctx *gin.Context) {
-	id := middlewares.UseIdentity(ctx)
-	store := useStore(ctx)
-	quiz := useQuiz(ctx)
+	id := auth.UseIdentity(ctx)
+	store := UseService(ctx)
+	quiz := UseQuiz(ctx)
 
 	var req PatchQuizRequest
 	if ctx.ShouldBindJSON(&req) != nil {
@@ -124,9 +156,9 @@ type CreateQuestionRequest struct {
 }
 
 func handlePostQuestion(ctx *gin.Context) {
-	store := useStore(ctx)
-	id := middlewares.UseIdentity(ctx)
-	quiz := useQuiz(ctx)
+	service := UseService(ctx)
+	id := auth.UseIdentity(ctx)
+	quiz := UseQuiz(ctx)
 
 	var req CreateQuestionRequest
 	if ctx.ShouldBindJSON(&req) != nil {
@@ -139,19 +171,19 @@ func handlePostQuestion(ctx *gin.Context) {
 		Title:   req.Title,
 		Answers: req.Answers,
 	}
-	err := store.UpsertQuestion(id.Uid, quiz.Id, question)
+	err := service.CreateQuestion(id.Uid, quiz, question)
 
 	if err != nil {
 		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
-	ctx.Header("Location", fmt.Sprintf("http://localhost:8000/api/quiz/%s/questions/%s", quiz.Id, question.Id))
+	ctx.Header("Location", fmt.Sprintf("http://localhost:8000/quiz/%s/questions/%s", quiz.Id, question.Id))
 	ctx.Status(http.StatusCreated)
 }
 
 func handleGetQuestions(ctx *gin.Context) {
-	quiz := useQuiz(ctx)
+	quiz := UseQuiz(ctx)
 	ctx.JSON(http.StatusOK, quiz.Questions)
 }
 
@@ -166,10 +198,10 @@ type UpdateQuestionRequest struct {
 }
 
 func handlePutQuestion(ctx *gin.Context) {
-	id := middlewares.UseIdentity(ctx)
-	store := useStore(ctx)
-	quiz := useQuiz(ctx)
-	question := useQuestion(ctx)
+	id := auth.UseIdentity(ctx)
+	store := UseService(ctx)
+	quiz := UseQuiz(ctx)
+	question := UseQuestion(ctx)
 
 	var payload UpdateQuestionRequest
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
@@ -178,7 +210,7 @@ func handlePutQuestion(ctx *gin.Context) {
 	}
 
 	question.Title = payload.Title
-	question.Answers = []Answer{}
+	question.Answers = make([]Answer, 0)
 	for _, a := range payload.Answers {
 		question.Answers = append(question.Answers, Answer{
 			Id:        uuid.New().String(),
@@ -196,21 +228,18 @@ func handlePutQuestion(ctx *gin.Context) {
 }
 
 func handleStartQuiz(ctx *gin.Context) {
-	resolver := useCodeResolver(ctx)
-	identity := middlewares.UseIdentity(ctx)
-	quiz := useQuiz(ctx)
+	service := UseService(ctx)
+	identity := auth.UseIdentity(ctx)
+	quiz := UseQuiz(ctx)
 
-	if !isQuizReadyToStart(&quiz) {
+	if err := service.StartQuiz(identity.Uid, quiz); errors.Is(err, ErrQuizNotReady) {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
+	} else if err != nil {
 		ctx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
-	if err := resolver.BindCode(identity.Uid, quiz); err != nil {
-		fmt.Println(err.Error())
-		ctx.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
-
-	ctx.Header("Location", fmt.Sprintf("http://localhost:8000/api/execution/%s", quiz.Code))
+	ctx.Header("Location", fmt.Sprintf("http://localhost:8000/execution/%s", quiz.Code))
 	ctx.Status(http.StatusCreated)
 }

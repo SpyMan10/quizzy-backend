@@ -26,14 +26,48 @@ type Quiz struct {
 	Title       string     `firestore:"title" json:"title"`
 	Description string     `firestore:"description" json:"description"`
 	Questions   []Question `firestore:"-" json:"questions"`
-	Links       Links      `firestore:"-" json:"_links,omitempty"`
 	Code        string     `firestore:"code" json:"code,omitempty"`
+}
+
+func (q *Quiz) Validate() bool {
+	if len(q.Title) == 0 {
+		return false
+	}
+	if len(q.Questions) == 0 {
+		return false
+	}
+	for _, quest := range q.Questions {
+		if !quest.Validate() {
+			return false
+		}
+	}
+	return true
 }
 
 type Question struct {
 	Id      string   `firestore:"-" json:"id"`
 	Title   string   `firestore:"title" json:"title"`
 	Answers []Answer `firestore:"-" json:"answers"`
+}
+
+func (q *Question) Validate() bool {
+	if len(q.Title) == 0 || len(q.Answers) < 2 {
+		return false
+	}
+
+	validAnswers := 0
+
+	for _, answer := range q.Answers {
+		if answer.IsCorrect {
+			validAnswers++
+		}
+	}
+
+	if validAnswers == len(q.Answers) {
+		return false
+	}
+
+	return true
 }
 
 type Answer struct {

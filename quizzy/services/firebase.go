@@ -19,13 +19,6 @@ type FirebaseServices struct {
 	Auth  *fireauth.Client
 }
 
-func newFirebaseServices(store *firestore.Client, auth *fireauth.Client) FirebaseServices {
-	return FirebaseServices{
-		Store: store,
-		Auth:  auth,
-	}
-}
-
 func ConfigureFirebase(cfg cfg.AppConfig) (FirebaseServices, error) {
 	if len(cfg.FirebaseConfFile) == 0 {
 		return FirebaseServices{}, ErrFirebaseConfNotFound
@@ -35,7 +28,10 @@ func ConfigureFirebase(cfg cfg.AppConfig) (FirebaseServices, error) {
 	if app, err := firebase.NewApp(context.Background(), nil, opt); app != nil && err == nil {
 		store, _ := app.Firestore(context.Background())
 		auth, _ := app.Auth(context.Background())
-		return newFirebaseServices(store, auth), nil
+		return FirebaseServices{
+			Store: store,
+			Auth:  auth,
+		}, nil
 	} else {
 		return FirebaseServices{}, err
 	}

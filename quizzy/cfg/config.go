@@ -11,11 +11,21 @@ const (
 	EnvTest        = "TEST"
 )
 
+type Env string
+
+func (env Env) IsTest() bool {
+	return strings.ToLower(string(env)) == strings.ToLower(EnvTest)
+}
+
+func (env Env) AsString() string {
+	return string(env)
+}
+
 // AppConfig describe what configuration options can be applied to this application.
 // Settings here, include external services connection URI, running environment (dev, test, prod)...
 type AppConfig struct {
 	// Application environment.
-	Env string
+	Env Env
 	// Address to listen on
 	Addr string
 	// Firebase configuration file.
@@ -39,7 +49,7 @@ func getEnvDefault(key, def string) string {
 // LoadCfgFromEnv generate a new AppConfig from environment.
 func LoadCfgFromEnv() AppConfig {
 	env := strings.ToUpper(getEnvDefault("APP_ENV", EnvProduction))
-	
+
 	switch env {
 	case EnvDevelopment:
 	case EnvProduction:
@@ -51,7 +61,7 @@ func LoadCfgFromEnv() AppConfig {
 	}
 
 	return AppConfig{
-		Env:              env,
+		Env:              Env(env),
 		Addr:             getEnvDefault("APP_ADDR", ":8000"),
 		FirebaseConfFile: os.Getenv("APP_FIREBASE_CONF_FILE"),
 		BasePath:         getEnvDefault("APP_BASE_PATH", "/"),

@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	socketio "github.com/googollee/go-socket.io"
 	"log"
+	"quizzy.app/backend/quizzy/auth"
 	"quizzy.app/backend/quizzy/cfg"
 	quizzyhttp "quizzy.app/backend/quizzy/http"
 	"quizzy.app/backend/quizzy/services"
@@ -16,7 +17,7 @@ func Run() {
 	config := cfg.LoadCfgFromEnv()
 
 	// Configure GIN execution mode (dev, test, production).
-	setGinMode(config.Env)
+	setGinMode(config.Env.AsString())
 
 	log.Printf("application running in %s mode.\n", config.Env)
 
@@ -26,28 +27,30 @@ func Run() {
 		AllowOrigins:     []string{"http://localhost:4200"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept"},
-		ExposeHeaders:    []string{"Content-Length"},
+		ExposeHeaders:    []string{"Content-Length", "Location"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
 
 	router := engine.Group(config.BasePath)
-	router.Use(func(c *gin.Context) {
-		c.Set("global-config", config)
-	})
+	router.Use(cfg.ProvideConfig(config))
 
 	// Configure database provider.
 	// Firebase access is injected here into GIN context,
 	// this will enable fast access to database through handling chain itself.
-	router.Use(func(ctx *gin.Context) {
-		//FIXME: Firebase application must be initialized outside ConfigureFirebase().
-		// Firestore can be initialized each time we need it.
-		if client, err := services.ConfigureFirebase(config); err == nil {
+
+	// External services must be only initialized for DEVELOPMENT or PRODUCTION modes.
+	// TEST mode use dummy implementations.
+	if client, err := services.ConfigureFirebase(config); err == nil {
+		router.Use(func(ctx *gin.Context) {
+			//FIXME: Firebase application must be initialized outside ConfigureFirebase().
+			// Firestore can be initialized each time we need it.
 			ctx.Set("firebase-services", client)
-		} else {
-			fmt.Printf("failed to initialize firebase services: %s\n", err)
-		}
-	})
+		})
+		router.Use(auth.ProvideAuthenticator(&auth.FirebaseAuthenticator{Fbs: &client}))
+	} else {
+		fmt.Printf("failed to initialize firebase services: %s\n", err)
+	}
 	router.Use(func(ctx *gin.Context) {
 		if redis := services.ConfigureRedis(config); redis != nil {
 			ctx.Set("redis-service", redis)

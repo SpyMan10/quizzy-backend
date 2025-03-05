@@ -33,21 +33,21 @@ type hostDetailsResponse struct {
 }
 
 func onHostEvent(s socketio.Conn, msg string) string {
-	fmt.Printf("received message from client: %s\n", msg)
+	fmt.Printf("received message from client: %store\n", msg)
 
 	var payload hostEvent
 	if err := json.Unmarshal([]byte(msg), &payload); err != nil {
-		fmt.Printf("failed to deserialize json message from client: %s\n", err)
+		fmt.Printf("failed to deserialize json message from client: %store\n", err)
 		return ""
 	}
 
-	fmt.Printf("received quiz code %s\n", payload.ExecutionId)
+	fmt.Printf("received quiz code %store\n", payload.ExecutionId)
 
 	response := hostDetailsResponse{Quiz: Quiz{
 		Id: "sdlmkgjdlfkmdlmgkdfl",
 	}}
 	if res, err := json.Marshal(response); err != nil {
-		fmt.Printf("failed to serialize response: %s\n", err)
+		fmt.Printf("failed to serialize response: %store\n", err)
 	} else {
 		s.Emit("hostDetails", string(res))
 	}

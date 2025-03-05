@@ -3,7 +3,6 @@ package quizzes
 import (
 	"cloud.google.com/go/firestore"
 	"context"
-	"fmt"
 	"strings"
 )
 
@@ -47,11 +46,6 @@ func (fs *fireStoreAdapter) GetUnique(ownerId, uid string) (Quiz, error) {
 	} else {
 		quiz.Questions = qs
 	}
-	if isQuizReadyToStart(&quiz) {
-		quiz.Links = Links{
-			Start: fmt.Sprintf("http://lcoalhost:8000/api/quiz/%s/start", quiz.Id),
-		}
-	}
 
 	return quiz, nil
 }
@@ -67,9 +61,9 @@ func (fs *fireStoreAdapter) GetQuizzes(ownerId string) ([]Quiz, error) {
 	}
 
 	// Must always be initialized to avoid nil pointer.
-	arr := []Quiz{}
+	arr := make([]Quiz, 0)
 	for _, doc := range docsIter {
-		quiz := Quiz{}
+		var quiz Quiz
 		if err2 := doc.DataTo(&quiz); err2 != nil {
 			return nil, err2
 		}
@@ -81,11 +75,7 @@ func (fs *fireStoreAdapter) GetQuizzes(ownerId string) ([]Quiz, error) {
 		} else {
 			quiz.Questions = questions
 		}
-		if isQuizReadyToStart(&quiz) {
-			quiz.Links = Links{
-				Start: fmt.Sprintf("http://localhost:8000/api/quiz/%s/start", quiz.Id),
-			}
-		}
+
 		arr = append(arr, quiz)
 	}
 
@@ -133,9 +123,9 @@ func (fs *fireStoreAdapter) getQuestions(ownerId, quizId string) ([]Question, er
 	}
 
 	// Must always be initialized to avoid nil pointer.
-	arr := []Question{}
+	arr := make([]Question, 0)
 	for _, doc := range docsIter {
-		question := Question{}
+		var question Question
 		if err2 := doc.DataTo(&question); err2 != nil {
 			return nil, err2
 		}
@@ -165,9 +155,9 @@ func (fs *fireStoreAdapter) getAnswers(ownerId, quizId, questionId string) ([]An
 	}
 
 	// Must always be initialized to avoid nil pointer.
-	arr := []Answer{}
+	arr := make([]Answer, 0)
 	for _, doc := range docsIter {
-		answer := Answer{}
+		var answer Answer
 		if err2 := doc.DataTo(&answer); err2 != nil {
 			return nil, err2
 		}
