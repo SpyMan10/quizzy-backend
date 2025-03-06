@@ -1,15 +1,16 @@
 package quizzy
 
 import (
-	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	socketio "github.com/googollee/go-socket.io"
+	"github.com/redis/go-redis/v9"
 	"log"
 	"quizzy.app/backend/quizzy/auth"
 	"quizzy.app/backend/quizzy/cfg"
-	quizzyhttp "quizzy.app/backend/quizzy/http"
+	"quizzy.app/backend/quizzy/ping"
+	"quizzy.app/backend/quizzy/quizzes"
 	"quizzy.app/backend/quizzy/services"
+	"quizzy.app/backend/quizzy/users"
 	"time"
 )
 
@@ -33,43 +34,18 @@ func Run() {
 	}))
 
 	router := engine.Group(config.BasePath)
-	router.Use(cfg.ProvideConfig(config))
 
-	// Configure database provider.
-	// Firebase access is injected here into GIN context,
-	// this will enable fast access to database through handling chain itself.
-
-	// External services must be only initialized for DEVELOPMENT or PRODUCTION modes.
-	// TEST mode use dummy implementations.
-	if client, err := services.ConfigureFirebase(config); err == nil {
-		router.Use(func(ctx *gin.Context) {
-			//FIXME: Firebase application must be initialized outside ConfigureFirebase().
-			// Firestore can be initialized each time we need it.
-			ctx.Set("firebase-services", client)
-		})
-		router.Use(auth.ProvideAuthenticator(&auth.FirebaseAuthenticator{Fbs: &client}))
-	} else {
-		fmt.Printf("failed to initialize firebase services: %s\n", err)
+	fbs, fbsErr := services.ConfigureFirebase(config)
+	if fbsErr != nil {
+		log.Fatalf("failed to initialize firebase services: %s", fbsErr)
 	}
-	router.Use(func(ctx *gin.Context) {
-		if redis := services.ConfigureRedis(config); redis != nil {
-			ctx.Set("redis-service", redis)
-		} else {
-			fmt.Println("failed to initialize redis connection.")
-		}
-	})
 
-	// Initializing SocketIO server.
-	ws := socketio.NewServer(nil)
+	rc, rcErr := services.ConfigureRedis(config)
+	if rcErr != nil {
+		log.Fatalf("failed to initialize redis service: %s", rcErr)
+	}
 
-	// Initializing HTTP routes and SocketIO.
-	quizzyhttp.ConfigureRouting(router, ws)
-
-	go func() {
-		if err := ws.Serve(); err != nil {
-			log.Fatalf("failed to run WS server: %s\n", err)
-		}
-	}()
+	setupModule(router, &fbs, rc, config)
 
 	// Running server...
 	if err := engine.Run(config.Addr); err != nil {
@@ -89,4 +65,13 @@ func setGinMode(env string) {
 		gin.SetMode(gin.ReleaseMode)
 		break
 	}
+}
+
+func setupModule(rt *gin.RouterGroup, fbs *services.FirebaseServices, rc *redis.Client, conf cfg.AppConfig) {
+	ping.Configure(fbs, rc).ConfigureRouting(rt)
+
+	secured := rt.Group("", auth.ProvideAuthenticator(&auth.FirebaseAuthenticator{Fbs: fbs}))
+
+	users.Configure(fbs, conf).ConfigureRouting(secured)
+	quizzes.Configure(fbs, rc, conf).ConfigureRouting(secured)
 }

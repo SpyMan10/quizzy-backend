@@ -6,22 +6,22 @@ import (
 	"strings"
 )
 
-type fireStoreAdapter struct {
+type quizFirestore struct {
 	client *firestore.Client
 }
 
 func ConfigureStore(client *firestore.Client) Store {
-	return &fireStoreAdapter{client: client}
+	return &quizFirestore{client: client}
 }
 
-func (fs *fireStoreAdapter) Upsert(ownerId string, quiz Quiz) error {
+func (fs *quizFirestore) Upsert(ownerId string, quiz Quiz) error {
 	_, err := fs.client.
 		Doc(strings.Join([]string{"users", ownerId, "quizzes", quiz.Id}, "/")).
 		Set(context.Background(), quiz)
 	return err
 }
 
-func (fs *fireStoreAdapter) GetUnique(ownerId, uid string) (Quiz, error) {
+func (fs *quizFirestore) GetUnique(ownerId, uid string) (Quiz, error) {
 	doc, err := fs.client.
 		Doc(strings.Join([]string{"users", ownerId, "quizzes", uid}, "/")).
 		Get(context.Background())
@@ -50,7 +50,7 @@ func (fs *fireStoreAdapter) GetUnique(ownerId, uid string) (Quiz, error) {
 	return quiz, nil
 }
 
-func (fs *fireStoreAdapter) GetQuizzes(ownerId string) ([]Quiz, error) {
+func (fs *quizFirestore) GetQuizzes(ownerId string) ([]Quiz, error) {
 	docsIter, err := fs.client.
 		Collection(strings.Join([]string{"users", ownerId, "quizzes"}, "/")).
 		Documents(context.Background()).
@@ -82,7 +82,7 @@ func (fs *fireStoreAdapter) GetQuizzes(ownerId string) ([]Quiz, error) {
 	return arr, nil
 }
 
-func (fs *fireStoreAdapter) Patch(ownerId, uid string, fields []FieldPatchOp) error {
+func (fs *quizFirestore) Patch(ownerId, uid string, fields []FieldPatchOp) error {
 	var updates []firestore.Update
 	for _, op := range fields {
 		if op.Op != "replace" {
@@ -112,7 +112,7 @@ func (fs *fireStoreAdapter) Patch(ownerId, uid string, fields []FieldPatchOp) er
 	return err
 }
 
-func (fs *fireStoreAdapter) getQuestions(ownerId, quizId string) ([]Question, error) {
+func (fs *quizFirestore) getQuestions(ownerId, quizId string) ([]Question, error) {
 	docsIter, err := fs.client.
 		Collection(strings.Join([]string{"users", ownerId, "quizzes", quizId, "questions"}, "/")).
 		Documents(context.Background()).
@@ -144,7 +144,7 @@ func (fs *fireStoreAdapter) getQuestions(ownerId, quizId string) ([]Question, er
 	return arr, nil
 }
 
-func (fs *fireStoreAdapter) getAnswers(ownerId, quizId, questionId string) ([]Answer, error) {
+func (fs *quizFirestore) getAnswers(ownerId, quizId, questionId string) ([]Answer, error) {
 	docsIter, err := fs.client.
 		Collection(strings.Join([]string{"users", ownerId, "quizzes", quizId, "questions", questionId, "answers"}, "/")).
 		Documents(context.Background()).
@@ -169,7 +169,7 @@ func (fs *fireStoreAdapter) getAnswers(ownerId, quizId, questionId string) ([]An
 	return arr, nil
 }
 
-func (fs *fireStoreAdapter) UpsertQuestion(ownerId, quizId string, question Question) error {
+func (fs *quizFirestore) UpsertQuestion(ownerId, quizId string, question Question) error {
 	if err := fs.UpdateQuestion(ownerId, quizId, question); err != nil {
 		return err
 	}
@@ -177,7 +177,7 @@ func (fs *fireStoreAdapter) UpsertQuestion(ownerId, quizId string, question Ques
 	return nil
 }
 
-func (fs *fireStoreAdapter) GetUniqueQuestion(ownerId, quizId, questionId string) (Question, error) {
+func (fs *quizFirestore) GetUniqueQuestion(ownerId, quizId, questionId string) (Question, error) {
 	doc, err := fs.client.
 		Doc(strings.Join([]string{"users", ownerId, "quizzes", quizId, "questions", questionId}, "/")).
 		Get(context.Background())
@@ -199,7 +199,7 @@ func (fs *fireStoreAdapter) GetUniqueQuestion(ownerId, quizId, questionId string
 	return question, nil
 }
 
-func (fs *fireStoreAdapter) UpdateQuestion(ownerId, quizId string, question Question) error {
+func (fs *quizFirestore) UpdateQuestion(ownerId, quizId string, question Question) error {
 	_, err := fs.client.
 		Doc(strings.Join([]string{"users", ownerId, "quizzes", quizId, "questions", question.Id}, "/")).
 		Set(context.Background(), question)

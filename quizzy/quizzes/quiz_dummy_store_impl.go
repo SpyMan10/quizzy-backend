@@ -5,11 +5,11 @@ type dummyEntry struct {
 	quizzes []Quiz
 }
 
-type DummyQuizStoreImpl struct {
+type dummyQuizStoreImpl struct {
 	entries []dummyEntry
 }
 
-func (d DummyQuizStoreImpl) Upsert(ownerId string, quiz Quiz) error {
+func (d *dummyQuizStoreImpl) Upsert(ownerId string, quiz Quiz) error {
 	for _, u := range d.entries {
 		if u.ownerId == ownerId {
 			for _, q := range u.quizzes {
@@ -23,13 +23,19 @@ func (d DummyQuizStoreImpl) Upsert(ownerId string, quiz Quiz) error {
 			}
 
 			u.quizzes = append(u.quizzes, quiz)
+			return nil
 		}
 	}
+
+	d.entries = append(d.entries, dummyEntry{
+		ownerId: ownerId,
+		quizzes: []Quiz{quiz},
+	})
 
 	return nil
 }
 
-func (d DummyQuizStoreImpl) GetUnique(ownerId, uid string) (Quiz, error) {
+func (d *dummyQuizStoreImpl) GetUnique(ownerId, uid string) (Quiz, error) {
 	for _, u := range d.entries {
 		if u.ownerId == ownerId {
 			for _, q := range u.quizzes {
@@ -43,7 +49,7 @@ func (d DummyQuizStoreImpl) GetUnique(ownerId, uid string) (Quiz, error) {
 	return Quiz{}, ErrNotFound
 }
 
-func (d DummyQuizStoreImpl) GetQuizzes(ownerId string) ([]Quiz, error) {
+func (d *dummyQuizStoreImpl) GetQuizzes(ownerId string) ([]Quiz, error) {
 	for _, u := range d.entries {
 		if u.ownerId == ownerId {
 			return u.quizzes, nil
@@ -53,7 +59,7 @@ func (d DummyQuizStoreImpl) GetQuizzes(ownerId string) ([]Quiz, error) {
 	return []Quiz{}, ErrNotFound
 }
 
-func (d DummyQuizStoreImpl) Patch(ownerId, uid string, fields []FieldPatchOp) error {
+func (d *dummyQuizStoreImpl) Patch(ownerId, uid string, fields []FieldPatchOp) error {
 	quiz, err := d.GetUnique(ownerId, uid)
 	if err != nil {
 		return err
@@ -74,7 +80,7 @@ func (d DummyQuizStoreImpl) Patch(ownerId, uid string, fields []FieldPatchOp) er
 	return nil
 }
 
-func (d DummyQuizStoreImpl) GetUniqueQuestion(ownerId, quizId, questionId string) (Question, error) {
+func (d *dummyQuizStoreImpl) GetUniqueQuestion(ownerId, quizId, questionId string) (Question, error) {
 	for _, u := range d.entries {
 		if u.ownerId == ownerId {
 			for _, q := range u.quizzes {
@@ -92,7 +98,7 @@ func (d DummyQuizStoreImpl) GetUniqueQuestion(ownerId, quizId, questionId string
 	return Question{}, ErrNotFound
 }
 
-func (d DummyQuizStoreImpl) UpsertQuestion(ownerId, quizId string, question Question) error {
+func (d *dummyQuizStoreImpl) UpsertQuestion(ownerId, quizId string, question Question) error {
 	for _, u := range d.entries {
 		if u.ownerId == ownerId {
 			for _, q := range u.quizzes {
@@ -115,7 +121,7 @@ func (d DummyQuizStoreImpl) UpsertQuestion(ownerId, quizId string, question Ques
 	return nil
 }
 
-func (d DummyQuizStoreImpl) UpdateQuestion(ownerId, quizId string, question Question) error {
+func (d *dummyQuizStoreImpl) UpdateQuestion(ownerId, quizId string, question Question) error {
 	for _, u := range d.entries {
 		if u.ownerId == ownerId {
 			for _, q := range u.quizzes {
@@ -137,8 +143,8 @@ func (d DummyQuizStoreImpl) UpdateQuestion(ownerId, quizId string, question Ques
 	return ErrNotFound
 }
 
-func CreateDummyStore() Store {
-	return DummyQuizStoreImpl{
+func _createDummyStore() Store {
+	return &dummyQuizStoreImpl{
 		entries: make([]dummyEntry, 0),
 	}
 }

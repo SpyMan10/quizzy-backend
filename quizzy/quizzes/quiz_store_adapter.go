@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	ErrNotFound             = errors.New("user not found")
+	ErrNotFound             = errors.New("quiz not found")
 	ErrInvalidPatchOperator = errors.New("invalid patch operator")
 	ErrInvalidPatchField    = errors.New("invalid patch field")
 )

@@ -6,22 +6,22 @@ import (
 	"strings"
 )
 
-type fireStoreAdapter struct {
+type userFirestore struct {
 	client *firestore.Client
 }
 
-func ConfigureStore(client *firestore.Client) Store {
-	return &fireStoreAdapter{client}
+func NewFirestore(client *firestore.Client) Store {
+	return &userFirestore{client}
 }
 
-func (fs *fireStoreAdapter) Upsert(user User) error {
+func (fs *userFirestore) Upsert(user User) error {
 	_, err := fs.client.
 		Doc(strings.Join([]string{"users", user.Id}, "/")).
 		Set(context.Background(), user)
 	return err
 }
 
-func (fs *fireStoreAdapter) GetUnique(id string) (User, error) {
+func (fs *userFirestore) GetUnique(id string) (User, error) {
 	doc, err := fs.client.
 		Doc(strings.Join([]string{"users", id}, "/")).
 		Get(context.Background())

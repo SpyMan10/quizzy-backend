@@ -2,36 +2,47 @@ package ping
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"maps"
+	"quizzy.app/backend/quizzy/services"
 	"strings"
 )
 
-func ConfigureRoutes(rt *gin.RouterGroup) {
-	rt.GET("/ping", ping)
+type Controller struct {
+	FbService   *services.FirebaseServices
+	RedisClient *redis.Client
 }
 
-func ping(c *gin.Context) {
+func Configure(fbs *services.FirebaseServices, rc *redis.Client) *Controller {
+	return &Controller{FbService: fbs, RedisClient: rc}
+}
+
+func (pc *Controller) ConfigureRouting(rt *gin.RouterGroup) {
+	rt.GET("/ping", pc.ping)
+}
+
+func (pc *Controller) ping(c *gin.Context) {
 	details := map[string]string{
 		"database": "OK",
 		"redis":    "OK",
 	}
 
 	// Checking firebase services (firestore + firebase) availability.
-	if _, exists := c.Get("firebase-services"); !exists {
+	if pc.FbService == nil {
 		details["database"] = "KO"
 	}
 
-	if _, exists := c.Get("redis-service"); !exists {
+	if pc.FbService == nil {
 		details["redis"] = "KO"
 	}
 
 	c.JSON(200, gin.H{
-		"status":  compareServiceStatus(details),
+		"status":  getGlobalStatus(details),
 		"details": details,
 	})
 }
 
-func compareServiceStatus(details map[string]string) string {
+func getGlobalStatus(details map[string]string) string {
 	koc := 0
 
 	for v := range maps.Values(details) {

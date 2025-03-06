@@ -5,11 +5,10 @@ import (
 	"quizzy.app/backend/quizzy/cfg"
 )
 
-func ConfigureRedis(cfg cfg.AppConfig) *redis.Client {
-	opt, err := redis.ParseURL(cfg.RedisUri)
-	if err != nil {
-		panic(err)
+func ConfigureRedis(cfg cfg.AppConfig) (*redis.Client, error) {
+	if opt, err := redis.ParseURL(cfg.RedisUri); err != nil {
+		return nil, err
+	} else {
+		return redis.NewClient(opt), nil
 	}
-
-	return redis.NewClient(opt)
 }

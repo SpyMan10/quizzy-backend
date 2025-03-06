@@ -1,21 +1,19 @@
 package users
 
-type DummyUserStoreImpl struct {
+type dummyUserStoreImpl struct {
 	Users []User
 }
 
-func NewDummyStore() Store {
-	return &DummyUserStoreImpl{
+func _newDummyStore() Store {
+	return &dummyUserStoreImpl{
 		Users: make([]User, 0),
 	}
 }
 
-func (st *DummyUserStoreImpl) Upsert(user User) error {
-	for _, u := range st.Users {
+func (st *dummyUserStoreImpl) Upsert(user User) error {
+	for i, u := range st.Users {
 		if u.Id == user.Id {
-			u.Email = user.Email
-			u.Username = user.Username
-			return nil
+			st.Users[i] = user
 		}
 	}
 
@@ -23,7 +21,7 @@ func (st *DummyUserStoreImpl) Upsert(user User) error {
 	return nil
 }
 
-func (st *DummyUserStoreImpl) GetUnique(id string) (User, error) {
+func (st *dummyUserStoreImpl) GetUnique(id string) (User, error) {
 	for _, user := range st.Users {
 		if user.Id == id {
 			return user, nil

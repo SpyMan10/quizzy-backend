@@ -4,29 +4,42 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"quizzy.app/backend/quizzy/auth"
+	"quizzy.app/backend/quizzy/cfg"
+	"quizzy.app/backend/quizzy/services"
 )
 
-func ConfigureRoutes(rt *gin.RouterGroup) {
-	secured := rt.Group("/users", auth.RequireAuthenticated, ProvideService)
-	secured.POST("", handlePostUser)
-	secured.GET("/me", handleGetSelf)
+type Controller struct {
+	Service UserService
 }
 
-type CreateUserRequest struct {
+func Configure(fbs *services.FirebaseServices, conf cfg.AppConfig) *Controller {
+	if !conf.Env.IsTest() {
+		return &Controller{Service: &UserServiceImpl{Store: &userFirestore{client: fbs.Store}}}
+	} else {
+		return &Controller{Service: &UserServiceImpl{Store: _newDummyStore()}}
+	}
+}
+
+func (uc *Controller) ConfigureRouting(rt *gin.RouterGroup) {
+	secured := rt.Group("/users", auth.RequireAuthenticated)
+	secured.POST("", uc.handlePostUser)
+	secured.GET("/me", uc.handleGetSelf)
+}
+
+type createUserRequest struct {
 	Username string `json:"username"`
 }
 
-func handlePostUser(ctx *gin.Context) {
+func (uc *Controller) handlePostUser(ctx *gin.Context) {
 	id := auth.UseIdentity(ctx)
 
-	var req CreateUserRequest
+	var req createUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
-	service := UseService(ctx)
-	if err := service.Create(User{Username: req.Username, Email: id.Email, Id: id.Uid}); err != nil {
+	if err := uc.Service.Create(User{Username: req.Username, Email: id.Email, Id: id.Uid}); err != nil {
 		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
@@ -34,11 +47,10 @@ func handlePostUser(ctx *gin.Context) {
 	ctx.Status(http.StatusCreated)
 }
 
-func handleGetSelf(ctx *gin.Context) {
+func (uc *Controller) handleGetSelf(ctx *gin.Context) {
 	id := auth.UseIdentity(ctx)
-	service := UseService(ctx)
 
-	if user, err := service.Get(id.Uid); err == nil {
+	if user, err := uc.Service.Get(id.Uid); err == nil {
 		ctx.JSON(http.StatusOK, user)
 		return
 	}

@@ -5,26 +5,84 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	socketio "github.com/googollee/go-socket.io"
+	"github.com/redis/go-redis/v9"
 	"net/http"
 	"quizzy.app/backend/quizzy/auth"
+	"quizzy.app/backend/quizzy/cfg"
+	"quizzy.app/backend/quizzy/services"
 )
 
-func ConfigureRoutes(rt *gin.RouterGroup, ws *socketio.Server) {
-	// Settings up SocketIO configuration for quiz module.
-	configureSocketIo(rt, ws)
+type Controller struct {
+	Resolver QuizCodeResolver
+	Service  QuizService
+}
 
-	secured := rt.Group("/quiz", auth.RequireAuthenticated, ProvideService)
-	secured.GET("", handleGetAllUserQuiz)
-	secured.POST("", handlePostQuiz)
+func Configure(fbs *services.FirebaseServices, rc *redis.Client, conf cfg.AppConfig) *Controller {
+	if !conf.Env.IsTest() {
+		return &Controller{
+			Service: &QuizServiceImpl{
+				store:    &quizFirestore{client: fbs.Store},
+				resolver: &RedisCodeResolver{client: rc},
+			},
+		}
+	} else {
+		return &Controller{
+			Service: &QuizServiceImpl{
+				store:    _createDummyStore(),
+				resolver: &dummyCodeResolver{entries: make(map[string]string)},
+			},
+		}
+	}
+}
 
-	quiz := secured.Group("/:quiz-id", ProvideQuiz)
+func (qc *Controller) ConfigureRouting(rt *gin.RouterGroup) {
+	secured := rt.Group("/quiz", auth.RequireAuthenticated)
+	secured.GET("", qc.handleGetAllUserQuiz)
+	secured.POST("", qc.handlePostQuiz)
+
+	quiz := secured.Group("/:quiz-id", qc.ProvideQuiz)
 	quiz.GET("", handleGetQuiz)
-	quiz.PATCH("", handlePatchQuiz)
+	quiz.PATCH("", qc.handlePatchQuiz)
 	quiz.GET("/questions", handleGetQuestions)
-	quiz.POST("/questions", handlePostQuestion)
-	quiz.PUT("/questions/:question-id", ProvideQuestion, handlePutQuestion)
-	quiz.POST("/start", handleStartQuiz)
+	quiz.POST("/questions", qc.handlePostQuestion)
+
+	quiz.PUT("/questions/:question-id", ProvideQuestion, qc.handlePutQuestion)
+	quiz.POST("/start", qc.handleStartQuiz)
+}
+
+func UseQuiz(ctx *gin.Context) Quiz {
+	return ctx.MustGet("current-quiz").(Quiz)
+}
+
+func (qc *Controller) ProvideQuiz(ctx *gin.Context) {
+	id := auth.UseIdentity(ctx)
+	qid := ctx.Param("quiz-id")
+
+	if quiz, err := qc.Service.Get(id.Uid, qid); err == nil {
+		ctx.Set("current-quiz", quiz)
+	} else if errors.Is(err, ErrNotFound) {
+		ctx.AbortWithStatus(http.StatusNotFound)
+	} else {
+		ctx.AbortWithStatus(http.StatusInternalServerError)
+	}
+}
+
+func ProvideQuestion(ctx *gin.Context) {
+	qid := ctx.Param("question-id")
+	quiz := UseQuiz(ctx)
+
+	for _, q := range quiz.Questions {
+		if q.Id == qid {
+			ctx.Set("current-question", q)
+			return
+		}
+	}
+
+	ctx.AbortWithStatus(http.StatusNotFound)
+}
+
+func UseQuestion(ctx *gin.Context) Question {
+	return ctx.MustGet("current-question").(Question)
 }
 
 func handleGetQuiz(ctx *gin.Context) {
@@ -68,11 +126,10 @@ func mapQuizWithLinks(quiz Quiz) QuizWithLinks {
 	}
 }
 
-func handleGetAllUserQuiz(ctx *gin.Context) {
+func (qc *Controller) handleGetAllUserQuiz(ctx *gin.Context) {
 	id := auth.UseIdentity(ctx)
-	service := UseService(ctx)
 
-	if quizzes, err := service.GetAll(id.Uid); err == nil {
+	if quizzes, err := qc.Service.GetAll(id.Uid); err == nil {
 		ctx.JSON(http.StatusOK, UserQuizzesResponse{
 			Data: mapMultipleQuizWithLinks(quizzes),
 			Links: Links{
@@ -90,9 +147,8 @@ type CreateQuizRequest struct {
 	Description string `json:"description"`
 }
 
-func handlePostQuiz(ctx *gin.Context) {
+func (qc *Controller) handlePostQuiz(ctx *gin.Context) {
 	id := auth.UseIdentity(ctx)
-	service := UseService(ctx)
 
 	// Getting payload from request.
 	var req CreateQuizRequest
@@ -109,7 +165,7 @@ func handlePostQuiz(ctx *gin.Context) {
 			Code:        code,
 		}
 
-		if err2 := service.Create(id.Uid, quiz); err2 == nil {
+		if err2 := qc.Service.Create(id.Uid, quiz); err2 == nil {
 			ctx.Header("Location", fmt.Sprintf("http://localhost:8000/quiz/%s", quiz.Id))
 			ctx.JSON(http.StatusCreated, quiz)
 			return
@@ -130,9 +186,8 @@ func handlePostQuiz(ctx *gin.Context) {
 
 type PatchQuizRequest []FieldPatchOp
 
-func handlePatchQuiz(ctx *gin.Context) {
+func (qc *Controller) handlePatchQuiz(ctx *gin.Context) {
 	id := auth.UseIdentity(ctx)
-	store := UseService(ctx)
 	quiz := UseQuiz(ctx)
 
 	var req PatchQuizRequest
@@ -141,7 +196,7 @@ func handlePatchQuiz(ctx *gin.Context) {
 		return
 	}
 
-	if err := store.Patch(id.Uid, quiz.Id, req); err == nil {
+	if err := qc.Service.Patch(id.Uid, quiz.Id, req); err == nil {
 		ctx.Status(http.StatusNoContent)
 	} else if errors.Is(err, ErrInvalidPatchOperator) || errors.Is(err, ErrInvalidPatchField) {
 		ctx.AbortWithStatus(http.StatusBadRequest)
@@ -155,8 +210,7 @@ type CreateQuestionRequest struct {
 	Answers []Answer `json:"answers"`
 }
 
-func handlePostQuestion(ctx *gin.Context) {
-	service := UseService(ctx)
+func (qc *Controller) handlePostQuestion(ctx *gin.Context) {
 	id := auth.UseIdentity(ctx)
 	quiz := UseQuiz(ctx)
 
@@ -171,7 +225,7 @@ func handlePostQuestion(ctx *gin.Context) {
 		Title:   req.Title,
 		Answers: req.Answers,
 	}
-	err := service.CreateQuestion(id.Uid, quiz, question)
+	err := qc.Service.CreateQuestion(id.Uid, quiz, question)
 
 	if err != nil {
 		ctx.AbortWithStatus(http.StatusInternalServerError)
@@ -197,9 +251,8 @@ type UpdateQuestionRequest struct {
 	Answers []UnidentifiedAnswer `json:"answers"`
 }
 
-func handlePutQuestion(ctx *gin.Context) {
+func (qc *Controller) handlePutQuestion(ctx *gin.Context) {
 	id := auth.UseIdentity(ctx)
-	store := UseService(ctx)
 	quiz := UseQuiz(ctx)
 	question := UseQuestion(ctx)
 
@@ -219,7 +272,7 @@ func handlePutQuestion(ctx *gin.Context) {
 		})
 	}
 
-	if err := store.UpdateQuestion(id.Uid, quiz.Id, question); err != nil {
+	if err := qc.Service.UpdateQuestion(id.Uid, quiz.Id, question); err != nil {
 		ctx.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
@@ -227,12 +280,11 @@ func handlePutQuestion(ctx *gin.Context) {
 	ctx.Status(http.StatusNoContent)
 }
 
-func handleStartQuiz(ctx *gin.Context) {
-	service := UseService(ctx)
+func (qc *Controller) handleStartQuiz(ctx *gin.Context) {
 	identity := auth.UseIdentity(ctx)
 	quiz := UseQuiz(ctx)
 
-	if err := service.StartQuiz(identity.Uid, quiz); errors.Is(err, ErrQuizNotReady) {
+	if err := qc.Service.StartQuiz(identity.Uid, quiz); errors.Is(err, ErrQuizNotReady) {
 		ctx.AbortWithStatus(http.StatusBadRequest)
 		return
 	} else if err != nil {
