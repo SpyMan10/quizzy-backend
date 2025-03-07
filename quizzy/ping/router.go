@@ -17,6 +17,13 @@ func Configure(fbs *services.FirebaseServices, rc *redis.Client) *Controller {
 	return &Controller{FbService: fbs, RedisClient: rc}
 }
 
+// pingHandler ping vérifie l'état des services Firebase et Redis et retourne leur disponibilité
+// @Summary Vérifier la disponibilité des services
+// @Description Vérifie si Firebase et Redis sont accessibles et retourne leur état
+// @Tags HealthCheck
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Statut des services"
+// @Router /ping [get]
 func (pc *Controller) ConfigureRouting(rt *gin.RouterGroup) {
 	rt.GET("/ping", pc.ping)
 }

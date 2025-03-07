@@ -85,6 +85,19 @@ func UseQuestion(ctx *gin.Context) Question {
 	return ctx.MustGet("current-question").(Question)
 }
 
+// handleGetQuiz retourne les détails d'un quiz spécifique
+// @Summary Récupérer un quiz
+// @Description Retourne les informations d'un quiz appartenant à l'utilisateur authentifié
+// @Tags Quizzes
+// @Produce json
+// @Param Authorization header string true "Token d'authentification Bearer" default(Bearer <votre_token>)
+// @Param quiz-id path string true "ID du quiz"
+// @Success 200 {object} Quiz "Détails du quiz"
+// @Failure 401 {string} string "Utilisateur non authentifié"
+// @Failure 404 {string} string "Quiz non trouvé"
+// @Failure 500 {string} string "Erreur interne du serveur"
+// @Router /quiz/{quiz-id} [get]
+// @Security BearerAuth
 func handleGetQuiz(ctx *gin.Context) {
 	quiz := UseQuiz(ctx)
 	ctx.JSON(http.StatusOK, quiz)
@@ -126,6 +139,17 @@ func mapQuizWithLinks(quiz Quiz) QuizWithLinks {
 	}
 }
 
+// handleGetAllUserQuiz retourne tous les quiz de l'utilisateur connecté
+// @Summary Récupérer tous mes quiz
+// @Description Retourne la liste des quiz créés par l'utilisateur authentifié
+// @Tags Quizzes
+// @Produce json
+// @Param Authorization header string true "Token d'authentification Bearer" default(Bearer <votre_token>)
+// @Success 200 {object} UserQuizzesResponse "Liste des quiz de l'utilisateur"
+// @Failure 401 {string} string "Utilisateur non authentifié"
+// @Failure 500 {string} string "Erreur interne du serveur"
+// @Router /quiz [get]
+// @Security BearerAuth
 func (qc *Controller) handleGetAllUserQuiz(ctx *gin.Context) {
 	id := auth.UseIdentity(ctx)
 
@@ -147,6 +171,20 @@ type CreateQuizRequest struct {
 	Description string `json:"description"`
 }
 
+// handlePostQuiz crée un nouveau quiz
+// @Summary Créer un quiz
+// @Description Permet à l'utilisateur authentifié de créer un quiz
+// @Tags Quizzes
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Token d'authentification Bearer" default(Bearer <votre_token>)
+// @Param body body CreateQuizRequest true "Informations du quiz à créer"
+// @Success 201 {object} Quiz "Quiz créé avec succès"
+// @Failure 400 {string} string "Requête invalide"
+// @Failure 401 {string} string "Utilisateur non authentifié"
+// @Failure 500 {string} string "Erreur interne du serveur"
+// @Router /quiz [post]
+// @Security BearerAuth
 func (qc *Controller) handlePostQuiz(ctx *gin.Context) {
 	id := auth.UseIdentity(ctx)
 
@@ -186,6 +224,21 @@ func (qc *Controller) handlePostQuiz(ctx *gin.Context) {
 
 type PatchQuizRequest []FieldPatchOp
 
+// handlePatchQuiz met à jour un quiz existant
+// @Summary Modifier un quiz
+// @Description Met à jour un quiz existant en fonction des champs envoyés
+// @Tags Quizzes
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Token d'authentification Bearer" default(Bearer <votre_token>)
+// @Param quiz-id path string true "ID du quiz"
+// @Param body body PatchQuizRequest true "Champs à modifier"
+// @Success 204 {string} string "Quiz mis à jour avec succès"
+// @Failure 400 {string} string "Requête invalide"
+// @Failure 401 {string} string "Utilisateur non authentifié"
+// @Failure 500 {string} string "Erreur interne du serveur"
+// @Router /quiz/{quiz-id} [patch]
+// @Security BearerAuth
 func (qc *Controller) handlePatchQuiz(ctx *gin.Context) {
 	id := auth.UseIdentity(ctx)
 	quiz := UseQuiz(ctx)
@@ -210,6 +263,21 @@ type CreateQuestionRequest struct {
 	Answers []Answer `json:"answers"`
 }
 
+// handlePostQuestion ajoute une question à un quiz
+// @Summary Ajouter une question
+// @Description Permet d'ajouter une question à un quiz existant
+// @Tags Quizzes
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Token d'authentification Bearer" default(Bearer <votre_token>)
+// @Param quiz-id path string true "ID du quiz"
+// @Param body body CreateQuestionRequest true "Détails de la question"
+// @Success 201 {string} string "Question ajoutée avec succès"
+// @Failure 400 {string} string "Requête invalide"
+// @Failure 401 {string} string "Utilisateur non authentifié"
+// @Failure 500 {string} string "Erreur interne du serveur"
+// @Router /quiz/{quiz-id}/questions [post]
+// @Security BearerAuth
 func (qc *Controller) handlePostQuestion(ctx *gin.Context) {
 	id := auth.UseIdentity(ctx)
 	quiz := UseQuiz(ctx)
@@ -236,6 +304,19 @@ func (qc *Controller) handlePostQuestion(ctx *gin.Context) {
 	ctx.Status(http.StatusCreated)
 }
 
+// handleGetQuestions retourne la liste des questions d'un quiz
+// @Summary Récupérer les questions d'un quiz
+// @Description Retourne toutes les questions du quiz spécifié par son ID
+// @Tags Quizzes
+// @Produce json
+// @Param Authorization header string true "Token d'authentification Bearer" default(Bearer <votre_token>)
+// @Param quiz-id path string true "ID du quiz"
+// @Success 200 {array} Question "Liste des questions du quiz"
+// @Failure 401 {string} string "Utilisateur non authentifié"
+// @Failure 404 {string} string "Quiz non trouvé"
+// @Failure 500 {string} string "Erreur interne du serveur"
+// @Router /quiz/{quiz-id}/questions [get]
+// @Security BearerAuth
 func handleGetQuestions(ctx *gin.Context) {
 	quiz := UseQuiz(ctx)
 	ctx.JSON(http.StatusOK, quiz.Questions)
@@ -251,6 +332,23 @@ type UpdateQuestionRequest struct {
 	Answers []UnidentifiedAnswer `json:"answers"`
 }
 
+// handlePutQuestion met à jour une question existante
+// @Summary Modifier une question
+// @Description Met à jour une question spécifique d'un quiz
+// @Tags Quizzes
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Token d'authentification Bearer" default(Bearer <votre_token>)
+// @Param quiz-id path string true "ID du quiz"
+// @Param question-id path string true "ID de la question"
+// @Param body body UpdateQuestionRequest true "Mise à jour de la question"
+// @Success 204 {string} string "Question mise à jour avec succès"
+// @Failure 400 {string} string "Requête invalide"
+// @Failure 401 {string} string "Utilisateur non authentifié"
+// @Failure 404 {string} string "Quiz ou question non trouvée"
+// @Failure 500 {string} string "Erreur interne du serveur"
+// @Router /quiz/{quiz-id}/questions/{question-id} [put]
+// @Security BearerAuth
 func (qc *Controller) handlePutQuestion(ctx *gin.Context) {
 	id := auth.UseIdentity(ctx)
 	quiz := UseQuiz(ctx)
@@ -280,6 +378,20 @@ func (qc *Controller) handlePutQuestion(ctx *gin.Context) {
 	ctx.Status(http.StatusNoContent)
 }
 
+// handleStartQuiz démarre un quiz
+// @Summary Démarrer un quiz
+// @Description Démarre un quiz et retourne son code d'exécution
+// @Tags Quizzes
+// @Produce json
+// @Param Authorization header string true "Token d'authentification Bearer" default(Bearer <votre_token>)
+// @Param quiz-id path string true "ID du quiz"
+// @Success 201 {string} string "Quiz démarré avec succès"
+// @Failure 400 {string} string "Quiz non prêt à être démarré"
+// @Failure 401 {string} string "Utilisateur non authentifié"
+// @Failure 404 {string} string "Quiz non trouvé"
+// @Failure 500 {string} string "Erreur interne du serveur"
+// @Router /quiz/{quiz-id}/start [post]
+// @Security BearerAuth
 func (qc *Controller) handleStartQuiz(ctx *gin.Context) {
 	identity := auth.UseIdentity(ctx)
 	quiz := UseQuiz(ctx)

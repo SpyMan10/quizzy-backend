@@ -4,6 +4,10 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	_ "quizzy.app/backend/docs" // Import Swagger Docs
+
 	"log"
 	"quizzy.app/backend/quizzy/auth"
 	"quizzy.app/backend/quizzy/cfg"
@@ -13,6 +17,15 @@ import (
 	"quizzy.app/backend/quizzy/users"
 	"time"
 )
+
+// @title Quizzy Backend API
+// @version 1.0
+// @description API permettant la gestion des utilisateurs et des quiz
+// @host localhost:8000
+// @BasePath /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 
 func Run() {
 	config := cfg.LoadCfgFromEnv()
@@ -34,6 +47,7 @@ func Run() {
 	}))
 
 	router := engine.Group(config.BasePath)
+	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	fbs, fbsErr := services.ConfigureFirebase(config)
 	if fbsErr != nil {

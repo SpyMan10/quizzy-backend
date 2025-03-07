@@ -1,0 +1,557 @@
+definitions:
+  quizzes.Answer:
+    properties:
+      id:
+        type: string
+      isCorrect:
+        type: boolean
+      title:
+        type: string
+    type: object
+  quizzes.CreateQuestionRequest:
+    properties:
+      answers:
+        items:
+          $ref: '#/definitions/quizzes.Answer'
+        type: array
+      title:
+        type: string
+    type: object
+  quizzes.CreateQuizRequest:
+    properties:
+      description:
+        type: string
+      title:
+        type: string
+    type: object
+  quizzes.FieldPatchOp:
+    properties:
+      op:
+        type: string
+      path:
+        type: string
+      value: {}
+    type: object
+  quizzes.Links:
+    properties:
+      create:
+        type: string
+      start:
+        type: string
+    type: object
+  quizzes.Question:
+    properties:
+      answers:
+        items:
+          $ref: '#/definitions/quizzes.Answer'
+        type: array
+      id:
+        type: string
+      title:
+        type: string
+    type: object
+  quizzes.Quiz:
+    properties:
+      code:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      questions:
+        items:
+          $ref: '#/definitions/quizzes.Question'
+        type: array
+      title:
+        type: string
+    type: object
+  quizzes.QuizWithLinks:
+    properties:
+      _links:
+        $ref: '#/definitions/quizzes.Links'
+      code:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      questions:
+        items:
+          $ref: '#/definitions/quizzes.Question'
+        type: array
+      title:
+        type: string
+    type: object
+  quizzes.UnidentifiedAnswer:
+    properties:
+      isCorrect:
+        type: boolean
+      title:
+        type: string
+    type: object
+  quizzes.UpdateQuestionRequest:
+    properties:
+      answers:
+        items:
+          $ref: '#/definitions/quizzes.UnidentifiedAnswer'
+        type: array
+      title:
+        type: string
+    type: object
+  quizzes.UserQuizzesResponse:
+    properties:
+      _links:
+        $ref: '#/definitions/quizzes.Links'
+      data:
+        items:
+          $ref: '#/definitions/quizzes.QuizWithLinks'
+        type: array
+    type: object
+  users.User:
+    properties:
+      email:
+        type: string
+      uid:
+        type: string
+      username:
+        type: string
+    type: object
+  users.createUserRequest:
+    properties:
+      username:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /ping:
+    get:
+      description: Vérifie si Firebase et Redis sont accessibles et retourne leur
+        état
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Statut des services
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Vérifier la disponibilité des services
+      tags:
+      - HealthCheck
+  /quiz:
+    get:
+      description: Retourne la liste des quiz créés par l'utilisateur authentifié
+      parameters:
+      - default: Bearer <votre_token>
+        description: Token d'authentification Bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Liste des quiz de l'utilisateur
+          schema:
+            $ref: '#/definitions/quizzes.UserQuizzesResponse'
+        "401":
+          description: Utilisateur non authentifié
+          schema:
+            type: string
+        "500":
+          description: Erreur interne du serveur
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Récupérer tous mes quiz
+      tags:
+      - Quizzes
+    post:
+      consumes:
+      - application/json
+      description: Permet à l'utilisateur authentifié de créer un quiz
+      parameters:
+      - default: Bearer <votre_token>
+        description: Token d'authentification Bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Informations du quiz à créer
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/quizzes.CreateQuizRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Quiz créé avec succès
+          schema:
+            $ref: '#/definitions/quizzes.Quiz'
+        "400":
+          description: Requête invalide
+          schema:
+            type: string
+        "401":
+          description: Utilisateur non authentifié
+          schema:
+            type: string
+        "500":
+          description: Erreur interne du serveur
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Créer un quiz
+      tags:
+      - Quizzes
+  /quiz/{quiz-id}:
+    get:
+      description: Retourne les informations d'un quiz appartenant à l'utilisateur
+        authentifié
+      parameters:
+      - default: Bearer <votre_token>
+        description: Token d'authentification Bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID du quiz
+        in: path
+        name: quiz-id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Détails du quiz
+          schema:
+            $ref: '#/definitions/quizzes.Quiz'
+        "401":
+          description: Utilisateur non authentifié
+          schema:
+            type: string
+        "404":
+          description: Quiz non trouvé
+          schema:
+            type: string
+        "500":
+          description: Erreur interne du serveur
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Récupérer un quiz
+      tags:
+      - Quizzes
+    patch:
+      consumes:
+      - application/json
+      description: Met à jour un quiz existant en fonction des champs envoyés
+      parameters:
+      - default: Bearer <votre_token>
+        description: Token d'authentification Bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID du quiz
+        in: path
+        name: quiz-id
+        required: true
+        type: string
+      - description: Champs à modifier
+        in: body
+        name: body
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/quizzes.FieldPatchOp'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Quiz mis à jour avec succès
+          schema:
+            type: string
+        "400":
+          description: Requête invalide
+          schema:
+            type: string
+        "401":
+          description: Utilisateur non authentifié
+          schema:
+            type: string
+        "500":
+          description: Erreur interne du serveur
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Modifier un quiz
+      tags:
+      - Quizzes
+  /quiz/{quiz-id}/questions:
+    get:
+      description: Retourne toutes les questions du quiz spécifié par son ID
+      parameters:
+      - default: Bearer <votre_token>
+        description: Token d'authentification Bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID du quiz
+        in: path
+        name: quiz-id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Liste des questions du quiz
+          schema:
+            items:
+              $ref: '#/definitions/quizzes.Question'
+            type: array
+        "401":
+          description: Utilisateur non authentifié
+          schema:
+            type: string
+        "404":
+          description: Quiz non trouvé
+          schema:
+            type: string
+        "500":
+          description: Erreur interne du serveur
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Récupérer les questions d'un quiz
+      tags:
+      - Quizzes
+    post:
+      consumes:
+      - application/json
+      description: Permet d'ajouter une question à un quiz existant
+      parameters:
+      - default: Bearer <votre_token>
+        description: Token d'authentification Bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID du quiz
+        in: path
+        name: quiz-id
+        required: true
+        type: string
+      - description: Détails de la question
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/quizzes.CreateQuestionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Question ajoutée avec succès
+          schema:
+            type: string
+        "400":
+          description: Requête invalide
+          schema:
+            type: string
+        "401":
+          description: Utilisateur non authentifié
+          schema:
+            type: string
+        "500":
+          description: Erreur interne du serveur
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Ajouter une question
+      tags:
+      - Quizzes
+  /quiz/{quiz-id}/questions/{question-id}:
+    put:
+      consumes:
+      - application/json
+      description: Met à jour une question spécifique d'un quiz
+      parameters:
+      - default: Bearer <votre_token>
+        description: Token d'authentification Bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID du quiz
+        in: path
+        name: quiz-id
+        required: true
+        type: string
+      - description: ID de la question
+        in: path
+        name: question-id
+        required: true
+        type: string
+      - description: Mise à jour de la question
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/quizzes.UpdateQuestionRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Question mise à jour avec succès
+          schema:
+            type: string
+        "400":
+          description: Requête invalide
+          schema:
+            type: string
+        "401":
+          description: Utilisateur non authentifié
+          schema:
+            type: string
+        "404":
+          description: Quiz ou question non trouvée
+          schema:
+            type: string
+        "500":
+          description: Erreur interne du serveur
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Modifier une question
+      tags:
+      - Quizzes
+  /quiz/{quiz-id}/start:
+    post:
+      description: Démarre un quiz et retourne son code d'exécution
+      parameters:
+      - default: Bearer <votre_token>
+        description: Token d'authentification Bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID du quiz
+        in: path
+        name: quiz-id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Quiz démarré avec succès
+          schema:
+            type: string
+        "400":
+          description: Quiz non prêt à être démarré
+          schema:
+            type: string
+        "401":
+          description: Utilisateur non authentifié
+          schema:
+            type: string
+        "404":
+          description: Quiz non trouvé
+          schema:
+            type: string
+        "500":
+          description: Erreur interne du serveur
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Démarrer un quiz
+      tags:
+      - Quizzes
+  /users:
+    post:
+      consumes:
+      - application/json
+      description: Cette route permet de créer un nouvel utilisateur à partir d'un
+        username et de l'email récupéré via l'authentification
+      parameters:
+      - default: Bearer <votre_token>
+        description: Token d'authentification Bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Informations de l'utilisateur à créer
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/users.createUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Utilisateur créé avec succès
+          schema:
+            type: string
+        "400":
+          description: Requête invalide
+          schema:
+            type: string
+        "500":
+          description: Erreur interne du serveur
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Créer un utilisateur
+      tags:
+      - Users
+  /users/me:
+    get:
+      description: Cette route permet d'obtenir les informations du compte actuellement
+        authentifié
+      parameters:
+      - default: Bearer <votre_token>
+        description: Token d'authentification Bearer
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Informations de l'utilisateur
+          schema:
+            $ref: '#/definitions/users.User'
+        "401":
+          description: Utilisateur non authentifié
+          schema:
+            type: string
+        "500":
+          description: Erreur interne du serveur
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Récupérer les informations de l'utilisateur connecté
+      tags:
+      - Users
+swagger: "2.0"
