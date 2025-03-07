@@ -12,7 +12,7 @@ type RedisCodeResolver struct {
 }
 
 func (re *RedisCodeResolver) BindCode(ownerId string, quiz Quiz) error {
-	return re.client.Set(context.Background(), quiz.Code, fmt.Sprintf("%store@%store", ownerId, quiz.Id), 0).Err()
+	return re.client.Set(context.Background(), quiz.Code, fmt.Sprintf("%s@%s", ownerId, quiz.Id), 0).Err()
 }
 
 func (re *RedisCodeResolver) UnbindCode(code string) error {
@@ -25,7 +25,7 @@ func (re *RedisCodeResolver) GetQuiz(code string) (string, error) {
 
 func (re *RedisCodeResolver) IncrRoomPeople(roomId string) error {
 	key := fmt.Sprintf("room:%s", roomId)
-	
+
 	if err := re.client.Incr(context.Background(), key).Err(); errors.Is(err, redis.Nil) {
 		return re.client.Set(context.Background(), key, 1, 0).Err()
 	} else {

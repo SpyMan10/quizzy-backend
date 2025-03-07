@@ -39,9 +39,10 @@ func Run() {
 	engine := gin.Default()
 	engine.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:4200"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "Connection"},
 		ExposeHeaders:    []string{"Content-Length", "Location"},
+		AllowWebSockets:  true,
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))

@@ -2,6 +2,7 @@ package quizzes
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"log"
@@ -96,6 +97,7 @@ func (sc *SocketController) handleWebSocket(w http.ResponseWriter, r *http.Reque
 
 func (sc *SocketController) handleHostEvent(conn *websocket.Conn, data map[string]any) {
 	executionId := data["executionId"].(string)
+	fmt.Println(executionId)
 	sc.roomsMu.Lock()
 	sc.hosts[executionId] = conn                // On stocke l'host séparément
 	sc.rooms[executionId] = []*websocket.Conn{} // On initialise la room sans participants
@@ -115,11 +117,12 @@ func (sc *SocketController) handleHostEvent(conn *websocket.Conn, data map[strin
 		},
 	}
 	res, _ := json.Marshal(response)
-	_ = conn.WriteMessage(websocket.TextMessage, res)
+	if err := conn.WriteMessage(websocket.TextMessage, res); err != nil {
+		print(err)
+	}
 
 	// Exclure l'hôte du comptage
 	nbPeoples, _ := sc.Service.GetRoomPeople(executionId)
-
 	sc.broadcastToRoom(executionId, map[string]interface{}{
 		"name": "status",
 		"data": map[string]interface{}{

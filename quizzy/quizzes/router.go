@@ -27,8 +27,9 @@ func Configure(fbs *services.FirebaseServices, rc *redis.Client, conf cfg.AppCon
 }
 
 func (qc *Controller) ConfigureRouting(rt *gin.RouterGroup) {
-	NewSocketController(qc.Service).Configure(rt)
-	
+	sc := NewSocketController(qc.Service)
+	sc.Configure(rt.Group(""))
+
 	secured := rt.Group("/quiz", auth.RequireAuthenticated)
 	secured.GET("", qc.handleGetAllUserQuiz)
 	secured.POST("", qc.handlePostQuiz)
