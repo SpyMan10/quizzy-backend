@@ -7,28 +7,32 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"quizzy.app/backend/quizzy/auth"
-	"quizzy.app/backend/quizzy/cfg"
 	"testing"
 )
 
-func _configureTestHandler(id auth.Identity) http.HandlerFunc {
+func _configureTestHandler(id auth.Identity, users []User) http.HandlerFunc {
 	eng := gin.Default()
 	rt := eng.Group("", auth.ProvideAuthenticator(&auth.DummyAuthenticator{PlaceHolder: id}))
-	con := Configure(nil, cfg.AppConfig{Env: cfg.EnvTest})
+	con := Controller{
+		Service: &UserServiceImpl{Store: _newDummyStore(users)},
+	}
 	con.ConfigureRouting(rt)
 
 	return eng.ServeHTTP
 }
 
-func TestPostUserAndGetSelf(t *testing.T) {
-	id := auth.Identity{
+func _fakeId() auth.Identity {
+	return auth.Identity{
 		Token: "x",
 		Uid:   uuid.New().String(),
 		Email: "test@mail.net",
 	}
+}
 
+func TestPostUser(t *testing.T) {
+	id := _fakeId()
 	ex := httpexpect.Default(t, "/")
-	handler := _configureTestHandler(id)
+	handler := _configureTestHandler(id, nil)
 
 	ex.POST("/users").
 		WithHeader("Authorization", "Bearer x").
@@ -52,13 +56,9 @@ func TestPostUserAndGetSelf(t *testing.T) {
 }
 
 func TestPostUserWithoutAuthorization(t *testing.T) {
-	id := auth.Identity{
-		Token: "x",
-		Uid:   uuid.New().String(),
-		Email: "test@mail.net",
-	}
+	id := _fakeId()
 	ex := httpexpect.Default(t, "/")
-	handler := _configureTestHandler(id)
+	handler := _configureTestHandler(id, nil)
 
 	ex.POST("/users").
 		WithJSON(createUserRequest{Username: "dummy-user"}).
@@ -68,14 +68,10 @@ func TestPostUserWithoutAuthorization(t *testing.T) {
 		NoContent()
 }
 
-func TestPostUserWithNoPayload(t *testing.T) {
-	id := auth.Identity{
-		Token: "x",
-		Uid:   uuid.New().String(),
-		Email: "test@mail.net",
-	}
+func TestPostUserWithoutPayload(t *testing.T) {
+	id := _fakeId()
 	ex := httpexpect.Default(t, "/")
-	handler := _configureTestHandler(id)
+	handler := _configureTestHandler(id, nil)
 
 	ex.POST("/users").
 		WithHeader("Authorization", "Bearer x").
@@ -83,4 +79,24 @@ func TestPostUserWithNoPayload(t *testing.T) {
 		Expect().
 		Status(http.StatusBadRequest).
 		NoContent()
+}
+
+func TestGetUserSelf(t *testing.T) {
+	id := _fakeId()
+	ex := httpexpect.Default(t, "/")
+	handler := _configureTestHandler(id, []User{
+		{Username: "dummy-user", Email: id.Email, Id: id.Uid},
+	})
+
+	var user User
+	ex.GET("/users/me").
+		WithHeader("Authorization", "Bearer x").
+		WithHandler(handler).
+		Expect().
+		Status(http.StatusOK).
+		JSON().Object().Decode(&user)
+
+	assert.Equal(t, user.Id, id.Uid)
+	assert.Equal(t, user.Email, id.Email)
+	assert.Equal(t, user.Username, "dummy-user")
 }

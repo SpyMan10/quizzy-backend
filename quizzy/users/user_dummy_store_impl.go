@@ -4,7 +4,13 @@ type dummyUserStoreImpl struct {
 	Users []User
 }
 
-func _newDummyStore() Store {
+func _newDummyStore(placeholder []User) Store {
+	if placeholder != nil {
+		return &dummyUserStoreImpl{
+			Users: placeholder,
+		}
+	}
+
 	return &dummyUserStoreImpl{
 		Users: make([]User, 0),
 	}
@@ -13,7 +19,9 @@ func _newDummyStore() Store {
 func (st *dummyUserStoreImpl) Upsert(user User) error {
 	for i, u := range st.Users {
 		if u.Id == user.Id {
-			st.Users[i] = user
+			st.Users[i].Username = user.Username
+			st.Users[i].Email = user.Email
+			return nil
 		}
 	}
 

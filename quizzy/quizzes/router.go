@@ -18,28 +18,20 @@ type Controller struct {
 }
 
 func Configure(fbs *services.FirebaseServices, rc *redis.Client, conf cfg.AppConfig) *Controller {
-	if !conf.Env.IsTest() {
-		return &Controller{
-			Service: &QuizServiceImpl{
-				store:    &quizFirestore{client: fbs.Store},
-				resolver: &RedisCodeResolver{client: rc},
-			},
-		}
-	} else {
-		return &Controller{
-			Service: &QuizServiceImpl{
-				store:    _createDummyStore(),
-				resolver: &dummyCodeResolver{entries: make(map[string]string)},
-			},
-		}
+	return &Controller{
+		Service: &QuizServiceImpl{
+			store:    &quizFirestore{client: fbs.Store},
+			resolver: &RedisCodeResolver{client: rc},
+		},
 	}
 }
 
 func (qc *Controller) ConfigureRouting(rt *gin.RouterGroup) {
+	NewSocketController(qc.Service).Configure(rt)
+	
 	secured := rt.Group("/quiz", auth.RequireAuthenticated)
 	secured.GET("", qc.handleGetAllUserQuiz)
 	secured.POST("", qc.handlePostQuiz)
-
 	quiz := secured.Group("/:quiz-id", qc.ProvideQuiz)
 	quiz.GET("", handleGetQuiz)
 	quiz.PATCH("", qc.handlePatchQuiz)

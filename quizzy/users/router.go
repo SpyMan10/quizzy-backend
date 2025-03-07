@@ -13,11 +13,7 @@ type Controller struct {
 }
 
 func Configure(fbs *services.FirebaseServices, conf cfg.AppConfig) *Controller {
-	if !conf.Env.IsTest() {
-		return &Controller{Service: &UserServiceImpl{Store: &userFirestore{client: fbs.Store}}}
-	} else {
-		return &Controller{Service: &UserServiceImpl{Store: _newDummyStore()}}
-	}
+	return &Controller{Service: &UserServiceImpl{Store: &userFirestore{client: fbs.Store}}}
 }
 
 func (uc *Controller) ConfigureRouting(rt *gin.RouterGroup) {

@@ -5,44 +5,65 @@ type dummyEntry struct {
 	quizzes []Quiz
 }
 
+func (ent *dummyEntry) _getQuiz(id string) *Quiz {
+	for _, q := range ent.quizzes {
+		if q.Id == id {
+			return &q
+		}
+	}
+
+	return nil
+}
+
 type dummyQuizStoreImpl struct {
 	entries []dummyEntry
 }
 
-func (d *dummyQuizStoreImpl) Upsert(ownerId string, quiz Quiz) error {
-	for _, u := range d.entries {
-		if u.ownerId == ownerId {
-			for _, q := range u.quizzes {
-				if q.Id == quiz.Id {
-					q.Title = quiz.Title
-					q.Description = quiz.Description
-					q.Questions = quiz.Questions
-					q.Code = quiz.Code
-					return nil
-				}
-			}
+func _newDummyStore(placeholder []dummyEntry) Store {
+	data := make([]dummyEntry, 0)
+	if placeholder != nil {
+		data = placeholder
+	}
 
-			u.quizzes = append(u.quizzes, quiz)
-			return nil
+	return &dummyQuizStoreImpl{
+		entries: data,
+	}
+}
+
+func (d *dummyQuizStoreImpl) _getEntry(ownerId string) *dummyEntry {
+	for _, ent := range d.entries {
+		if ent.ownerId == ownerId {
+			return &ent
 		}
 	}
 
-	d.entries = append(d.entries, dummyEntry{
-		ownerId: ownerId,
-		quizzes: []Quiz{quiz},
-	})
+	return nil
+}
+
+func (d *dummyQuizStoreImpl) Upsert(ownerId string, quiz Quiz) error {
+	if ent := d._getEntry(ownerId); ent != nil {
+		if q := ent._getQuiz(quiz.Id); q != nil {
+			q.Title = quiz.Title
+			q.Description = quiz.Description
+			q.Code = quiz.Code
+			q.Questions = quiz.Questions
+		} else {
+			ent.quizzes = append(ent.quizzes, quiz)
+		}
+	} else {
+		d.entries = append(d.entries, dummyEntry{
+			ownerId: ownerId,
+			quizzes: []Quiz{quiz},
+		})
+	}
 
 	return nil
 }
 
 func (d *dummyQuizStoreImpl) GetUnique(ownerId, uid string) (Quiz, error) {
-	for _, u := range d.entries {
-		if u.ownerId == ownerId {
-			for _, q := range u.quizzes {
-				if q.Id == uid {
-					return q, nil
-				}
-			}
+	if ent := d._getEntry(ownerId); ent != nil {
+		if q := ent._getQuiz(uid); q != nil {
+			return *q, nil
 		}
 	}
 
@@ -50,10 +71,8 @@ func (d *dummyQuizStoreImpl) GetUnique(ownerId, uid string) (Quiz, error) {
 }
 
 func (d *dummyQuizStoreImpl) GetQuizzes(ownerId string) ([]Quiz, error) {
-	for _, u := range d.entries {
-		if u.ownerId == ownerId {
-			return u.quizzes, nil
-		}
+	if ent := d._getEntry(ownerId); ent != nil {
+		return ent.quizzes, nil
 	}
 
 	return []Quiz{}, ErrNotFound
